@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Math Widgets</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Georgia, serif; background: #f5f0e8; color: #333;
+         display: flex; justify-content: center; padding: 48px 24px; min-height: 100vh; }
+  .page { max-width: 720px; width: 100%; }
+  h1 { font-size: 24px; margin-bottom: 6px; }
+  .lede { color: #6b6357; font-size: 15px; line-height: 1.6; margin-bottom: 28px; }
+  a.card { display: block; text-decoration: none; color: inherit;
+           background: #fff; border: 2px solid #e8e2d8; border-left-width: 5px;
+           border-radius: 12px; padding: 18px 20px; margin-bottom: 12px;
+           transition: border-color .15s, transform .1s; }
+  a.card:hover { border-color: #c8bfae; border-left-color: #4caf7d; transform: translateX(3px); }
+  .card h2 { font-size: 17px; margin-bottom: 5px; color: #222; }
+  .card p { font-size: 13.5px; line-height: 1.55; color: #6b6357; }
+  .note { font-size: 12.5px; color: #9a9184; line-height: 1.6; margin-top: 26px; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Math Widgets</h1>
+  <p class="lede">Interactive classroom widgets. Each one is a single self-contained page —
+     it can be opened directly, or embedded in another site with an iframe.</p>
+
+  <a class="card" href="number-set-nester.html">
+    <h2>Number Set Nester</h2>
+    <p>Drag numbers into the smallest set that will hold them — natural, whole, integer,
+       rational, irrational, real. Generates a fresh set of twelve each round.</p>
+  </a>
+
+  <a class="card" href="number-set-venn.html">
+    <h2>Number Set Venn</h2>
+    <p>The nesting diagram on its own, with overlays showing how prime/composite,
+       even/odd, and positive/negative relate to it.</p>
+  </a>
+
+  <p class="note">Widgets accept options on the URL: <code>?title=0</code> hides the heading,
+     <code>?reveal=0</code> shows all definitions from the start.</p>
+</div>
+</body>
+</html>

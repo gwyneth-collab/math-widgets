@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Number Set Nester</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Georgia', serif;
+    background: #f5f0e8;
+    display: flex; align-items: flex-start; justify-content: center;
+    min-height: 100vh; padding: 40px 24px;
+  }
+
+  /* Embedded in an iframe: drop the page chrome so the host page's own background
+     and spacing show through, and let the host control the frame. */
+  body.embedded {
+    background: transparent; padding: 0; min-height: 0; align-items: flex-start;
+  }
+  body.embedded .widget {
+    box-shadow: none; border-radius: 0; max-width: none; padding: 20px 22px 26px;
+  }
+  body.hide-title .widget-title { display: none; }
+
+  .widget {
+    background: #fff; border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+    padding: 30px 34px 34px;
+    max-width: 1120px; width: 100%;
+  }
+  .widget-title {
+    font-size: 13px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #999; text-align: center; margin-bottom: 6px;
+  }
+  .widget-sub {
+    font-size: 14px; color: #666; text-align: center; margin-bottom: 18px;
+  }
+
+  /* ── PROGRESS ── */
+  .progress-bar {
+    display: flex; align-items: center; justify-content: center;
+    gap: 6px; margin-bottom: 22px;
+  }
+  .progress-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: #e0dcd4; transition: background 0.3s;
+  }
+  .progress-dot.done { background: #4caf7d; }
+  .progress-count {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: #aaa; margin-left: 10px;
+  }
+
+  /* ── TWO-COLUMN LAYOUT ── */
+  .cols { display: flex; gap: 26px; align-items: flex-start; }
+  .col-left  { flex: 1 1 620px; min-width: 0; }
+  .col-right { flex: 0 0 330px; }
+  @media (max-width: 980px) {
+    .cols { flex-direction: column; }
+    .col-right { flex: 1 1 auto; width: 100%; }
+  }
+
+  /* ── NESTED RINGS ── */
+  .ring {
+    border-radius: 14px;
+    border: 2.5px solid;
+    padding: 26px 12px 12px;
+    position: relative;
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.2s;
+  }
+  .ring-tag {
+    position: absolute; top: 6px; left: 12px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em;
+    text-transform: uppercase;
+    display: flex; align-items: baseline; gap: 5px;
+    cursor: pointer; user-select: none;
+  }
+  .ring-tag .sym {
+    font-size: 14px; font-weight: 700; letter-spacing: 0;
+    text-transform: none;
+  }
+  .ring.dz-hover { box-shadow: inset 0 0 0 3px rgba(0,0,0,0.10); }
+  .ring.spotlight { box-shadow: 0 0 0 3px rgba(0,0,0,0.14); }
+
+  .ring-real       { border-color: #b0a89a; background: #faf8f4; }
+  .ring-rational   { border-color: #5b8dd9; background: rgba(91,141,217,0.055); }
+  .ring-irrational { border-color: #e67e22; background: rgba(230,126,34,0.06); }
+  .ring-integer    { border-color: #1abc9c; background: rgba(26,188,156,0.07); }
+  .ring-whole      { border-color: #8e6bbf; background: rgba(142,107,191,0.07); }
+  .ring-natural    { border-color: #4caf7d; background: rgba(76,175,125,0.09); }
+
+  .ring-real       > .ring-tag { color: #8a8172; }
+  .ring-rational   > .ring-tag { color: #4272b8; }
+  .ring-irrational > .ring-tag { color: #c96a12; }
+  .ring-integer    > .ring-tag { color: #12907a; }
+  .ring-whole      > .ring-tag { color: #74539f; }
+  .ring-natural    > .ring-tag { color: #34875c; }
+
+  .real-inner { display: flex; gap: 10px; align-items: stretch; }
+  .real-inner > .ring-rational   { flex: 1 1 66%; }
+  .real-inner > .ring-irrational { flex: 1 1 34%; display: flex; flex-direction: column; }
+  .ring-irrational > .slot-area { flex: 1; align-content: flex-start; }
+
+  /* ── EMPTY REGION (Real minus Rational minus Irrational) ── */
+  .empty-region {
+    margin-top: 10px;
+    display: flex; align-items: center; gap: 11px;
+    padding: 9px 13px;
+    border: 2px dashed #cfc7b8; border-radius: 10px;
+    background: repeating-linear-gradient(
+      45deg,
+      rgba(176,168,154,0.05) 0px, rgba(176,168,154,0.05) 6px,
+      transparent 6px, transparent 12px);
+    cursor: pointer;
+    transition: border-color 0.15s, background-color 0.15s;
+  }
+  .empty-region:hover { border-color: #b0a89a; background-color: rgba(176,168,154,0.06); }
+  .empty-region.flash { border-color: #e67e22; background-color: rgba(230,126,34,0.07); }
+  .empty-sym {
+    font-size: 26px; font-weight: 400; color: #8a8172;
+    line-height: 1; flex-shrink: 0;
+  }
+  .empty-text {
+    font-size: 11.5px; line-height: 1.45; color: #8a8172;
+  }
+  .empty-text b { color: #6e6658; }
+
+  .slot-area {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    min-height: 40px; padding: 3px;
+    align-items: flex-start;
+  }
+  .ring-natural > .slot-area { min-height: 44px; }
+
+  /* ── CHIPS ── */
+  .chip {
+    padding: 7px 14px; font-size: 15px; font-weight: 700;
+    font-family: 'Georgia', serif;
+    color: #333; background: #fff;
+    border: 2px solid #d8d2c6; border-radius: 18px;
+    cursor: grab; user-select: none; touch-action: none;
+    display: inline-flex; align-items: center; gap: 2px;
+    transition: opacity 0.15s, transform 0.15s, border-color 0.15s, background 0.15s;
+    white-space: nowrap;
+  }
+  .chip:hover { transform: translateY(-1px); border-color: #b9b1a2; }
+  .chip.dragging { opacity: 0.25; cursor: grabbing; }
+  .chip.placed {
+    cursor: pointer; border-color: #4caf7d;
+    background: rgba(76,175,125,0.10); color: #2d7a4a;
+  }
+  .chip.placed:hover { transform: none; background: rgba(76,175,125,0.18); }
+  .chip.selected { box-shadow: 0 0 0 3px rgba(76,175,125,0.30); }
+  .chip.shake { animation: shake 0.32s; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+  }
+
+  .frac {
+    display: inline-flex; flex-direction: column; align-items: center;
+    vertical-align: middle; line-height: 1.12; font-size: 0.82em;
+    margin: 0 2px; padding: 1px 0;
+  }
+  .frac .num { padding: 0 3px; }
+  .frac .den { border-top: 1.5px solid currentColor; padding: 1px 3px 0; }
+  .ovl { text-decoration: overline; }
+
+  .drag-ghost {
+    position: fixed; z-index: 1000;
+    font-size: 15px; font-weight: 700; color: #333;
+    font-family: 'Georgia', serif;
+    background: #fff; padding: 7px 16px; border-radius: 18px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+    border: 2px solid rgba(91,141,217,0.35);
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    display: inline-flex; align-items: center;
+  }
+
+  /* ── TRAY ── */
+  .tray-label {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em;
+    text-transform: uppercase; color: #aaa;
+    margin: 20px 0 9px; text-align: center;
+  }
+  .chip-tray {
+    display: flex; flex-wrap: wrap; gap: 9px; justify-content: center;
+    padding: 14px 12px; background: #faf8f4;
+    border: 2px dashed #e4ded2; border-radius: 12px;
+    min-height: 62px;
+  }
+  .chip-tray.empty-msg::after {
+    content: 'All numbers placed';
+    font-size: 12.5px; color: #bbb; font-style: italic;
+    align-self: center;
+  }
+
+  /* ── NOTE CARD ── */
+  .note-card {
+    margin-top: 16px; padding: 15px 18px;
+    border-radius: 11px; border: 2px solid #e8e2d8;
+    background: #faf8f4; min-height: 104px;
+    font-size: 13.5px; line-height: 1.55; color: #555;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .note-card.ok    { border-color: #c8e0bc; background: #f2f8ee; }
+  .note-card.close { border-color: #f0d3a8; background: #fdf6ec; }
+  .note-card.no    { border-color: #f0c4c4; background: #fdf0f0; }
+  .note-idle { color: #aaa; font-style: italic; }
+  .note-head {
+    font-size: 15.5px; font-weight: 700; color: #222; margin-bottom: 6px;
+  }
+  .note-card.ok    .note-head { color: #2d7a4a; }
+  .note-card.close .note-head { color: #c96a12; }
+  .note-card.no    .note-head { color: #c0392b; }
+  .note-why { margin-bottom: 9px; }
+  .note-chain {
+    font-size: 12.5px; padding-top: 8px; border-top: 1.5px solid rgba(0,0,0,0.07);
+  }
+  .note-chain b { color: #333; }
+  .tick { color: #4caf7d; font-weight: 700; }
+  .cross { color: #d94040; font-weight: 700; }
+  .setname { font-weight: 700; }
+  .s-natural   { color: #34875c; }
+  .s-whole     { color: #74539f; }
+  .s-integer   { color: #12907a; }
+  .s-rational  { color: #4272b8; }
+  .s-irrational{ color: #c96a12; }
+  .s-real      { color: #8a8172; }
+
+  /* ── DEFINITIONS PANEL ── */
+  .defs-head {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em;
+    text-transform: uppercase; color: #aaa; margin-bottom: 10px;
+  }
+  .defs { display: flex; flex-direction: column; gap: 8px; }
+  .def-card {
+    border: 2px solid #e8e2d8; border-left-width: 5px;
+    border-radius: 10px; padding: 11px 13px;
+    background: #fff; cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+  .def-card:hover { background: #faf8f4; }
+  .def-card.spotlight { box-shadow: 0 0 0 3px rgba(0,0,0,0.09); background: #faf8f4; }
+  .def-natural    { border-left-color: #4caf7d; }
+  .def-whole      { border-left-color: #8e6bbf; }
+  .def-integer    { border-left-color: #1abc9c; }
+  .def-rational   { border-left-color: #5b8dd9; }
+  .def-irrational { border-left-color: #e67e22; }
+  .def-real       { border-left-color: #b0a89a; }
+
+  /* Locked until the student has dropped a number in that ring. */
+  .defs .def-card.locked {
+    border-left-color: #ddd6c8; background: #fbfaf7; cursor: default;
+  }
+  .defs .def-card.locked:hover { background: #fbfaf7; }
+  .def-card.locked .def-title { color: #b8b0a3; }
+  .def-locked-msg {
+    font-size: 11.5px; line-height: 1.45; color: #b8b0a3; font-style: italic;
+  }
+  .def-card.nudge { animation: nudge 0.34s; }
+  @keyframes nudge {
+    0%,100% { transform: translateX(0); }
+    30% { transform: translateX(-4px); }
+    70% { transform: translateX(4px); }
+  }
+  .def-card.just-revealed { animation: revealPop 0.75s ease-out; }
+  @keyframes revealPop {
+    0%   { opacity: 0; transform: translateY(-5px); box-shadow: 0 0 0 4px rgba(76,175,125,0.30); }
+    55%  { opacity: 1; transform: none;             box-shadow: 0 0 0 4px rgba(76,175,125,0.30); }
+    100% { opacity: 1; transform: none;             box-shadow: 0 0 0 0 rgba(76,175,125,0); }
+  }
+  .defs-count {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em;
+    color: #4caf7d; float: right;
+  }
+
+  .def-title {
+    display: flex; align-items: baseline; gap: 7px;
+    font-size: 14px; font-weight: 700; color: #222; margin-bottom: 5px;
+  }
+  .def-title .sym { font-size: 16px; }
+  .def-def {
+    font-size: 12.5px; line-height: 1.5; color: #555; margin-bottom: 7px;
+  }
+  .def-sub {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: #bbb; margin-bottom: 3px;
+  }
+  .def-list { list-style: none; margin-bottom: 7px; }
+  .def-list li {
+    font-size: 12.5px; line-height: 1.5; color: #555;
+    padding-left: 13px; position: relative;
+  }
+  .def-list li::before {
+    content: '·'; position: absolute; left: 3px; font-weight: 700; color: #bbb;
+  }
+  .def-adds {
+    font-size: 12px; line-height: 1.5; color: #7a7264;
+    background: #faf8f4; border-radius: 6px; padding: 6px 9px; margin-top: 6px;
+  }
+  .def-adds b { color: #555; }
+
+  .footnote {
+    font-size: 11.5px; line-height: 1.5; color: #999;
+    margin-top: 12px; font-style: italic;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    display: flex; justify-content: center; gap: 12px; margin-top: 22px;
+  }
+  .btn {
+    padding: 9px 24px; font-size: 14px; font-weight: 700;
+    font-family: 'Georgia', serif;
+    border-radius: 8px; cursor: pointer; border: 2px solid #e0dcd4;
+    background: #fff; color: #777; transition: background 0.15s, color 0.15s;
+  }
+  .btn:hover { background: #f5f0e8; color: #555; }
+  .btn-primary { border-color: #c8e0bc; color: #2d7a4a; background: #f2f8ee; }
+  .btn-primary:hover { background: #e6f2df; color: #226340; }
+
+  .done-banner {
+    margin-top: 16px; padding: 16px 22px; background: #f0f7ed;
+    border: 2px solid #c8e0bc; border-radius: 12px;
+    font-size: 13.5px; line-height: 1.6; color: #2d7a4a;
+    animation: fadeIn 0.3s ease-out;
+  }
+  .done-banner b { color: #226340; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+<div class="widget">
+  <div class="widget-title">Number Set Nester</div>
+  <div class="widget-sub">Drag each number to its <b>innermost</b> home — the smallest set it belongs to.<br>
+    <span style="font-size:12.5px;color:#999;">Each set on the right unlocks the first time you drop a
+    number in its ring — right or wrong.</span></div>
+
+  <div class="progress-bar">
+    <div id="dots" style="display:flex;gap:6px;"></div>
+    <span class="progress-count" id="count">0 of 12</span>
+  </div>
+
+  <div class="cols">
+    <div class="col-left">
+
+      <div class="ring ring-real" data-set="real" data-depth="1">
+        <div class="ring-tag"><span class="sym">&#8477;</span> Real</div>
+        <div class="real-inner">
+
+          <div class="ring ring-rational" data-set="rational" data-depth="2">
+            <div class="ring-tag"><span class="sym">&#8474;</span> Rational</div>
+
+            <div class="ring ring-integer" data-set="integer" data-depth="3">
+              <div class="ring-tag"><span class="sym">&#8484;</span> Integers</div>
+
+              <div class="ring ring-whole" data-set="whole" data-depth="4">
+                <div class="ring-tag"><span class="sym">W</span> Whole</div>
+
+                <div class="ring ring-natural" data-set="natural" data-depth="5">
+                  <div class="ring-tag"><span class="sym">&#8469;</span> Natural</div>
+                  <div class="slot-area" data-slot="natural"></div>
+                </div>
+
+                <div class="slot-area" data-slot="whole"></div>
+              </div>
+
+              <div class="slot-area" data-slot="integer"></div>
+            </div>
+
+            <div class="slot-area" data-slot="rational"></div>
+          </div>
+
+          <div class="ring ring-irrational" data-set="irrational" data-depth="2">
+            <div class="ring-tag"><span class="sym">&#120128;</span> Irrational</div>
+            <div class="slot-area" data-slot="irrational"></div>
+          </div>
+
+        </div>
+
+        <div class="empty-region" id="emptyRegion">
+          <span class="empty-sym">&#8709;</span>
+          <span class="empty-text">Out here — inside Real, but outside <b>both</b> Rational and
+            Irrational — there is nothing. This region is empty.</span>
+        </div>
+      </div>
+
+      <div class="tray-label">Numbers to place</div>
+      <div class="chip-tray" id="tray"></div>
+
+      <div class="note-card" id="note">
+        <span class="note-idle">Drop a number into a ring to see what is true about it. Click any placed number to see its note again.</span>
+      </div>
+
+      <div id="banner"></div>
+
+      <div class="footer">
+        <button class="btn btn-primary" onclick="newRound()"
+                title="Deal 12 freshly generated numbers, keeping any definitions you have unlocked">New numbers</button>
+        <button class="btn" onclick="resetAll()"
+                title="Clear the board and re-lock all six definitions">Reset</button>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="defs-head">The sets <span class="defs-count" id="defsCount"></span></div>
+      <div class="defs" id="defs"></div>
+      <div class="footnote">
+        Convention note: this widget uses the counting-numbers definition of &#8469; (starting at 1),
+        which is what makes Whole a separate ring. Some textbooks include 0 in the naturals and drop
+        the Whole ring entirely.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+// CONFIG
+// Declared first: generateRound() runs during init and reads these.
+// ══════════════════════════════════════
+// Options are read from the URL query string, so one hosted copy of this file can serve
+// several different embeds without editing it:
+//   ?reveal=0     reference mode — all six definitions readable from the start
+//   ?advanced=1   allow e and 2π (Algebra 2 constants; off by default)
+//   ?title=0      hide the widget's own title, for a page that supplies its own heading
+const PARAMS = new URLSearchParams(location.search);
+const opt = (name, dflt) => {
+  const v = PARAMS.get(name);
+  return v === null ? dflt : !/^(0|false|no|off)$/i.test(v);
+};
+
+// Discovery mode: each set's definition card stays locked until the student drops a number
+// in that ring — right or wrong. Reference mode shows all six from the start.
+const REVEAL_ON_PLACEMENT = opt('reveal', true);
+
+// e and 2π belong to Algebra 2, not to a pre-algebra number-classification lesson.
+const INCLUDE_ADVANCED_CONSTANTS = opt('advanced', false);
+
+// Running inside an iframe? Shed the standalone page chrome and report our height out.
+const IN_FRAME = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+if (IN_FRAME) document.documentElement.classList.add('in-frame');
+
+// ══════════════════════════════════════
+// SET STRUCTURE
+// ══════════════════════════════════════
+const ORDER = ['natural','whole','integer','rational','irrational','real'];
+
+// Grammatical forms so generated feedback reads as English.
+const ISA = {
+  natural:'a natural number', whole:'a whole number', integer:'an integer',
+  rational:'a rational number', irrational:'an irrational number', real:'a real number'
+};
+const SINGULAR = {
+  natural:'natural number', whole:'whole number', integer:'integer',
+  rational:'rational number', irrational:'irrational number', real:'real number'
+};
+const PLURAL = {
+  natural:'natural numbers', whole:'whole numbers', integer:'integers',
+  rational:'rational numbers', irrational:'irrational numbers', real:'real numbers'
+};
+const ADJ = {
+  natural:'natural', whole:'whole', integer:'an integer',
+  rational:'rational', irrational:'irrational', real:'real'
+};
+const SHORT = {
+  natural:'Natural', whole:'Whole', integer:'Integers',
+  rational:'Rational', irrational:'Irrational', real:'Real'
+};
+
+// Every set a member of X also belongs to, innermost first.
+const ANCESTRY = {
+  natural:    ['natural','whole','integer','rational','real'],
+  whole:      ['whole','integer','rational','real'],
+  integer:    ['integer','rational','real'],
+  rational:   ['rational','real'],
+  irrational: ['irrational','real'],
+  real:       ['real']
+};
+
+const REQUIREMENT = {
+  natural:    'the counting numbers 1, 2, 3, … — no zero, no negatives, no fractional part',
+  whole:      'the counting numbers plus zero — no negatives, no fractional part',
+  integer:    'the whole numbers and their opposites — no fractional part',
+  rational:   'anything that can be written as a ratio of two integers',
+  irrational: 'numbers that cannot be written as a ratio of two integers',
+  real:       'every rational and every irrational number'
+};
+
+const DEFS = [
+  { key:'natural', sym:'&#8469;', name:'Natural numbers',
+    def:'The counting numbers: 1, 2, 3, 4, &#8230;',
+    looks:['What you use to count objects','No zero','No negatives','No fractional part'],
+    ex:'1, 7, 42, &#8730;9',
+    adds:'The innermost ring — everything else is built outward from here.' },
+
+  { key:'whole', sym:'W', name:'Whole numbers',
+    def:'The natural numbers together with 0: 0, 1, 2, 3, &#8230;',
+    looks:['Counting numbers plus zero','Still no negatives','Still no fractional part'],
+    ex:'0, 1, 7, 42',
+    adds:'<b>Adds exactly one thing to Natural:</b> zero.' },
+
+  { key:'integer', sym:'&#8484;', name:'Integers',
+    def:'The whole numbers and their opposites: &#8230; &#8722;3, &#8722;2, &#8722;1, 0, 1, 2, 3, &#8230;',
+    looks:['Any number with no fractional part','Positive, negative, or zero'],
+    ex:'&#8722;15, &#8722;3, 0, 7',
+    adds:'<b>Adds to Whole:</b> the negatives.' },
+
+  { key:'rational', sym:'&#8474;', name:'Rational numbers',
+    def:'Any number that can be written as a ratio <i>a</i>/<i>b</i> of two integers, with <i>b</i> &#8800; 0.',
+    looks:['Any fraction of integers','Any terminating decimal','Any repeating decimal','Every integer — since <i>n</i> = <i>n</i>/1'],
+    ex:'3/4, 0.25, 0.<span class="ovl">6</span>, &#8722;8/2, 7',
+    adds:'<b>Adds to Integers:</b> everything between the integers that a fraction can name.' },
+
+  { key:'irrational', sym:'&#120128;', name:'Irrational numbers',
+    def:'Numbers that <i>cannot</i> be written as a ratio of two integers.',
+    looks:['Decimals that never end and never repeat','Most square roots — &#8730;2, &#8730;3, &#8730;5','&#960; and <i>e</i>'],
+    ex:'&#960;, &#8730;2, &#8722;&#8730;5, 0.1010010001&#8230;',
+    adds:'<b>The one ring that is not nested:</b> it sits beside Rational, not inside it. No number is in both.' },
+
+  { key:'real', sym:'&#8477;', name:'Real numbers',
+    def:'Every rational number and every irrational number, together.',
+    looks:['Any number you can locate on the number line','Rational ∪ Irrational, with no overlap'],
+    ex:'all of the above',
+    adds:'<b>The outer ring.</b> Every real number is rational or irrational — never both, and never neither. ' +
+         'So no number lands in Real alone, and the band outside both is marked &#8709;.' }
+];
+
+// ══════════════════════════════════════
+// NUMBERS
+// ══════════════════════════════════════
+function frac(n, d) {
+  return '<span class="frac"><span class="num">' + n + '</span><span class="den">' + d + '</span></span>';
+}
+const MINUS = '−';
+
+// ══════════════════════════════════════
+// NUMBER GENERATORS
+//
+// Every round is randomly generated, but not freely — a fixed template fixes the
+// *composition* of the round so the pedagogy survives the randomness. Each round always
+// carries three naturals (one plain, one hidden under a radical, one hidden under a
+// fraction bar), the zero case, two integers (one plain negative, one disguised), three
+// rationals (fraction / terminating / repeating) and three irrationals (radical /
+// constant / constructed decimal). Free random generation would happily deal a round
+// with no disguised numbers in it, and the disguises are the whole point.
+// ══════════════════════════════════════
+const rint = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const gcd = (a, b) => b ? gcd(b, a % b) : a;
+
+function decStr(x) {
+  return x.toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+}
+function ovl(t) { return '0.<span class="ovl">' + t + '</span>'; }
+
+const GEN = {
+  natural: {
+    plain() {
+      const v = rint(2, 99);
+      return { html: String(v), home: 'natural',
+        why: v + ' is one of the numbers you count with, so it stops at the innermost ring.',
+        trait: v + ' is positive and has no fractional part.' };
+    },
+    radical() {
+      const k = rint(2, 12), v = k * k;
+      return { html: '√' + v, home: 'natural',
+        why: 'A radical sign does not make a number irrational. Simplify first: √' + v + ' = ' + k + ', a counting number.',
+        trait: '√' + v + ' is exactly ' + k + '.' };
+    },
+    fraction() {
+      const q = rint(2, 12), d = rint(2, 9), n = q * d;
+      return { html: frac(n, d), home: 'natural',
+        why: 'A fraction bar does not make a number non-integer. Simplify first: ' + n + '/' + d + ' = ' + q + ', a counting number.',
+        trait: n + '/' + d + ' is exactly ' + q + '.' };
+    }
+  },
+
+  // Zero is the ONLY number that is whole but not natural, so this slot varies only in
+  // how zero is disguised.
+  whole: {
+    any() {
+      const zeroLine = 'Zero is the one thing Whole adds to Natural. You do not start counting at 0, so it is not natural — but it is whole.';
+      const form = pick(['plain', 'fraction', 'radical']);
+      if (form === 'fraction') {
+        const d = rint(2, 12);
+        return { html: frac(0, d), home: 'whole',
+          why: 'Zero divided by any nonzero number is 0. ' + zeroLine,
+          trait: '0/' + d + ' is exactly 0.' };
+      }
+      if (form === 'radical') {
+        return { html: '√0', home: 'whole',
+          why: '√0 = 0. ' + zeroLine,
+          trait: '√0 is exactly 0.' };
+      }
+      return { html: '0', home: 'whole', why: zeroLine,
+        trait: '0 is neither positive nor negative, and it has no fractional part.' };
+    }
+  },
+
+  // An integer that is not whole must be negative — that is exactly what the ring adds.
+  integer: {
+    plain() {
+      const v = rint(2, 99);
+      return { html: MINUS + v, home: 'integer',
+        why: 'Negatives are what Integers add to Whole. ' + MINUS + v + ' has no fractional part, so it reaches the Integer ring — and the minus sign stops it there.',
+        trait: MINUS + v + ' is negative.' };
+    },
+    disguised() {
+      if (Math.random() < 0.5) {
+        const q = rint(2, 12), d = rint(2, 9), n = q * d;
+        return { html: MINUS + frac(n, d), home: 'integer',
+          why: MINUS + n + '/' + d + ' simplifies to ' + MINUS + q + ' — no fractional part, so it reaches the Integer ring, and the negative stops it there.',
+          trait: MINUS + n + '/' + d + ' is exactly ' + MINUS + q + '.' };
+      }
+      const k = rint(2, 12), v = k * k;
+      return { html: MINUS + '√' + v, home: 'integer',
+        why: 'A radical sign does not make a number irrational. ' + MINUS + '√' + v + ' = ' + MINUS + k + ' — an integer, held at that ring by the minus sign.',
+        trait: MINUS + '√' + v + ' is exactly ' + MINUS + k + '.' };
+    }
+  },
+
+  rational: {
+    fraction() {
+      let n, d, g;
+      do {
+        d = rint(2, 12); n = rint(1, 3 * d);
+        g = gcd(n, d); n /= g; d /= g;
+      } while (d === 1);                        // reject anything that reduces to an integer
+      const neg = Math.random() < 0.35;
+      return { html: (neg ? MINUS : '') + frac(n, d), home: 'rational',
+        why: n + '/' + d + ' is already a ratio of two integers, so it is rational — but it is not a whole amount, so it does not reach the Integer ring.',
+        trait: (neg ? MINUS : '') + n + '/' + d + ' has a fractional part.' };
+    },
+    terminating() {
+      let n, d, g;
+      do {
+        d = pick([2, 4, 5, 8, 10, 20, 25, 50]); n = rint(1, 4 * d);
+        g = gcd(n, d); n /= g; d /= g;
+      } while (d === 1);
+      const neg = Math.random() < 0.3;
+      const dec = (neg ? MINUS : '') + decStr(n / d);
+      return { html: dec, home: 'rational',
+        why: dec + ' terminates, and every terminating decimal can be rewritten as a fraction — here ' + n + '/' + d + '.',
+        trait: dec + ' has a fractional part, and its decimal ends.' };
+    },
+    repeating() {
+      let block, num, den;
+      if (Math.random() < 0.55) {
+        block = String(rint(1, 8));             // 0.9̄ = 1, so 9 is excluded
+        num = +block; den = 9;
+      } else {
+        let a, b;
+        do { a = rint(1, 9); b = rint(0, 9); } while (a === b);
+        block = '' + a + b; num = +block; den = 99;
+      }
+      const g = gcd(num, den); num /= g; den /= g;
+      return { html: ovl(block), home: 'rational',
+        why: 'A repeating decimal is always rational. ' + ovl(block) + ' = ' + num + '/' + den + '.',
+        trait: ovl(block) + ' repeats forever, and it has a fractional part.' };
+    }
+  },
+
+  irrational: {
+    radical() {
+      let p;
+      do { p = rint(2, 60); } while (Number.isInteger(Math.sqrt(p)));
+      const neg = Math.random() < 0.3;
+      const disp = (neg ? MINUS : '') + '√' + p;
+      return { html: disp, home: 'irrational',
+        why: 'No ratio of integers squares to exactly ' + p + ' — that is provable, not just unknown.',
+        trait: disp + ' ≈ ' + (neg ? MINUS : '') + Math.sqrt(p).toFixed(5) + '… — its decimal never ends and never repeats.' };
+    },
+    // This slot guarantees a *named* irrational every round, so the student never sees
+    // irrational as "the radical bin". e and 2π are Algebra 2 material, so they are off by
+    // default — flip INCLUDE_ADVANCED_CONSTANTS for an older cohort.
+    constant() {
+      const basic = [
+        { html: 'π', home: 'irrational',
+          why: 'π cannot be written as a ratio of integers. 22/7 is a common approximation, not an equality.',
+          trait: 'π ≈ 3.14159… — its decimal never ends and never repeats.' },
+        { html: '√2', home: 'irrational',
+          why: 'No ratio of integers squares to exactly 2 — that is provable, not just unknown.',
+          trait: '√2 ≈ 1.41421… — its decimal never ends and never repeats.' },
+        { html: '√3', home: 'irrational',
+          why: 'No ratio of integers squares to exactly 3 — that is provable, not just unknown.',
+          trait: '√3 ≈ 1.73205… — its decimal never ends and never repeats.' },
+        { html: '√5', home: 'irrational',
+          why: 'No ratio of integers squares to exactly 5 — that is provable, not just unknown.',
+          trait: '√5 ≈ 2.23607… — its decimal never ends and never repeats.' }
+      ];
+      const advanced = [
+        { html: 'e', home: 'irrational',
+          why: 'e is the base of natural growth, and like π it cannot be written as a ratio of integers.',
+          trait: 'e ≈ 2.71828… — its decimal never ends and never repeats.' },
+        { html: '2π', home: 'irrational',
+          why: 'Multiplying an irrational number by a nonzero integer leaves it irrational — 2π is still not a ratio of integers.',
+          trait: '2π ≈ 6.28318… — its decimal never ends and never repeats.' }
+      ];
+      return pick(INCLUDE_ADVANCED_CONSTANTS ? basic.concat(advanced) : basic);
+    },
+    constructed() {
+      const a = rint(1, 4), b = (a % 9) + 1;    // two distinct digits
+      const style = pick(['grow', 'champernowne']);
+      if (style === 'champernowne') {
+        const st = rint(1, 4);
+        const seq = Array.from({ length: 9 }, (_, i) => st + i).join('');
+        return { html: '0.' + seq + '…', home: 'irrational',
+          why: 'This decimal is built by writing the counting numbers in a row. It never ends and never falls into a repeating block, so it is irrational.',
+          trait: '0.' + seq + '… never settles into a repeating block.' };
+      }
+      const disp = '0.' + a + b + a + b + b + a + b + b + b + '…';
+      return { html: disp, home: 'irrational',
+        why: 'This decimal has a pattern, but no fixed block ever repeats — there is one more ' + b + ' each time. Non-terminating and non-repeating means irrational.',
+        trait: disp + ' never ends and never settles into a repeating block.' };
+    }
+  }
+};
+
+// Fixed composition, random contents.
+const ROUND_TEMPLATE = [
+  ['natural', 'plain'], ['natural', 'radical'], ['natural', 'fraction'],
+  ['whole', 'any'],
+  ['integer', 'plain'], ['integer', 'disguised'],
+  ['rational', 'fraction'], ['rational', 'terminating'], ['rational', 'repeating'],
+  ['irrational', 'radical'], ['irrational', 'constant'], ['irrational', 'constructed']
+];
+
+function generateRound() {
+  const seen = new Set(), out = [];
+  ROUND_TEMPLATE.forEach(([home, variant], i) => {
+    let n, guard = 0;
+    do { n = GEN[home][variant](); } while (seen.has(n.html) && ++guard < 40);
+    seen.add(n.html);
+    n.id = 'n' + i;
+    out.push(n);
+  });
+  // Shuffle, so tray position never telegraphs the set.
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+let NUMBERS = generateRound();
+
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+let placed = {};      // numberId -> setKey
+let revealed = {};    // setKey -> true once its ring has been dropped on
+let dragState = null;
+
+const trayEl   = document.getElementById('tray');
+const noteEl   = document.getElementById('note');
+const dotsEl   = document.getElementById('dots');
+const countEl  = document.getElementById('count');
+const bannerEl = document.getElementById('banner');
+
+// ══════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════
+function isRevealed(key) {
+  return !REVEAL_ON_PLACEMENT || !!revealed[key];
+}
+
+function cardBody(d) {
+  if (!isRevealed(d.key)) {
+    return `<div class="def-title"><span class="sym">${d.sym}</span> ${d.name}</div>
+      <div class="def-locked-msg">Drop a number in the ${SHORT[d.key]} ring to unlock this.</div>`;
+  }
+  return `<div class="def-title"><span class="sym">${d.sym}</span> ${d.name}</div>
+      <div class="def-def">${d.def}</div>
+      <div class="def-sub">Described as</div>
+      <ul class="def-list">${d.looks.map(l => '<li>' + l + '</li>').join('')}</ul>
+      <div class="def-sub">Examples</div>
+      <div class="def-def">${d.ex}</div>
+      <div class="def-adds">${d.adds}</div>`;
+}
+
+function renderDefs() {
+  document.getElementById('defs').innerHTML = DEFS.map(d =>
+    `<div class="def-card def-${d.key}${isRevealed(d.key) ? '' : ' locked'}" data-def="${d.key}">
+      ${cardBody(d)}
+     </div>`).join('');
+
+  document.querySelectorAll('[data-def]').forEach(card => {
+    card.addEventListener('click', () => {
+      const key = card.dataset.def;
+      if (!isRevealed(key)) { nudgeCard(key); return; }
+      spotlight(key);
+    });
+  });
+  updateDefsCount();
+}
+
+// Reveal one set's card. Called on every drop onto that ring, correct or not —
+// a wrong guess is exactly when the student needs the definition.
+function revealSet(key) {
+  if (!REVEAL_ON_PLACEMENT || revealed[key]) return false;
+  revealed[key] = true;
+
+  const card = document.querySelector('.def-card[data-def="' + key + '"]');
+  card.classList.remove('locked');
+  card.innerHTML = cardBody(DEFS.find(d => d.key === key));
+  card.classList.add('just-revealed');
+  setTimeout(() => card.classList.remove('just-revealed'), 780);
+  card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+
+  updateDefsCount();
+  return true;
+}
+
+function nudgeCard(key) {
+  const card = document.querySelector('.def-card[data-def="' + key + '"]');
+  card.classList.add('nudge');
+  setTimeout(() => card.classList.remove('nudge'), 360);
+  spotlight(key);
+}
+
+function updateDefsCount() {
+  const el = document.getElementById('defsCount');
+  if (!REVEAL_ON_PLACEMENT) { el.textContent = ''; return; }
+  const n = Object.keys(revealed).length;
+  el.textContent = n === DEFS.length ? 'all 6 unlocked' : n + ' of ' + DEFS.length + ' unlocked';
+}
+
+function attachStaticHandlers() {
+  document.getElementById('emptyRegion').addEventListener('click', () => {
+    showEmptyRegion(null);
+    spotlight('real');
+  });
+  document.querySelectorAll('.ring-tag').forEach(tag => {
+    tag.addEventListener('click', e => {
+      e.stopPropagation();
+      spotlight(tag.parentElement.dataset.set);
+    });
+  });
+}
+
+function flashEmpty() {
+  const el = document.getElementById('emptyRegion');
+  el.classList.add('flash');
+  setTimeout(() => el.classList.remove('flash'), 600);
+}
+
+function spotlight(key) {
+  const already = document.querySelector('.ring.spotlight')?.dataset.set === key;
+  document.querySelectorAll('.spotlight').forEach(el => el.classList.remove('spotlight'));
+  if (already) return;
+  document.querySelector('.ring[data-set="' + key + '"]').classList.add('spotlight');
+  document.querySelector('.def-card[data-def="' + key + '"]').classList.add('spotlight');
+}
+
+function renderTray() {
+  trayEl.innerHTML = '';
+  const remaining = NUMBERS.filter(n => !placed[n.id]);
+  trayEl.classList.toggle('empty-msg', remaining.length === 0);
+  remaining.forEach(n => {
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.innerHTML = n.html;
+    chip.dataset.numId = n.id;
+    attachDrag(chip);
+    trayEl.appendChild(chip);
+  });
+}
+
+function renderPlaced() {
+  document.querySelectorAll('.slot-area').forEach(s => s.innerHTML = '');
+  NUMBERS.forEach(n => {
+    if (!placed[n.id]) return;
+    const slot = document.querySelector('.slot-area[data-slot="' + placed[n.id] + '"]');
+    const chip = document.createElement('div');
+    chip.className = 'chip placed';
+    chip.innerHTML = n.html;
+    chip.dataset.numId = n.id;
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.chip.selected').forEach(c => c.classList.remove('selected'));
+      chip.classList.add('selected');
+      showTruth(n);
+      spotlight(n.home);
+    });
+    slot.appendChild(chip);
+  });
+}
+
+function renderProgress() {
+  const done = Object.keys(placed).length;
+  dotsEl.innerHTML = NUMBERS.map((_, i) =>
+    '<div class="progress-dot' + (i < done ? ' done' : '') + '"></div>').join('');
+  countEl.textContent = done + ' of ' + NUMBERS.length;
+
+  if (done === NUMBERS.length) {
+    bannerEl.innerHTML = `
+      <div class="done-banner">
+        <b>All ${NUMBERS.length} placed.</b> Notice what the rings tell you: every number in an inner ring is
+        automatically in every ring around it, but not the other way around. Every natural number
+        is rational; almost no rational number is natural. And Irrational is the one region that
+        overlaps nothing — a real number is rational or irrational, <b>never both, and never
+        neither</b>. That is what the &#8709; band is telling you: those two sets together use up
+        all of Real, with nothing left over.
+      </div>`;
+  } else {
+    bannerEl.innerHTML = '';
+  }
+}
+
+// ══════════════════════════════════════
+// NOTE RENDERING
+// ══════════════════════════════════════
+function setName(key) {
+  return '<span class="setname s-' + key + '">' + SHORT[key] + '</span>';
+}
+
+function showTruth(n) {
+  const inSets  = ANCESTRY[n.home];
+  const outSets = ORDER.filter(s => !inSets.includes(s));
+  const also    = inSets.slice(1);
+
+  noteEl.className = 'note-card ok';
+  noteEl.innerHTML =
+    '<div class="note-head">' + n.html + ' is ' + ISA[n.home] + '</div>' +
+    '<div class="note-why">' + n.why + '</div>' +
+    '<div class="note-chain"><span class="tick">&#10003;</span> <b>Also true:</b> ' +
+      also.map(setName).join(' &#183; ') +
+      ' — an inner ring is inside all of these.' +
+    (outSets.length
+      ? '<br><span class="cross">&#10007;</span> <b>Not:</b> ' + outSets.map(setName).join(' &#183; ')
+      : '') +
+    '</div>';
+}
+
+function showTooBroad(n, attempted) {
+  noteEl.className = 'note-card close';
+  noteEl.innerHTML =
+    '<div class="note-head">True — but not the innermost home</div>' +
+    '<div class="note-why">' + n.html + ' really is in ' + setName(attempted) +
+      '. But it also fits inside a smaller ring, and every number belongs in the smallest set that will hold it. ' +
+      n.trait + ' Look further in.</div>' +
+    '<div class="note-chain">Every ' + SINGULAR[n.home] + ' is ' + ISA[attempted] +
+      ', but not every ' + SINGULAR[attempted] + ' is ' + ADJ[n.home] +
+      '. That is what nesting means — the containment only runs one way.</div>';
+}
+
+function showWrong(n, attempted) {
+  noteEl.className = 'note-card no';
+  noteEl.innerHTML =
+    '<div class="note-head">' + n.html + ' is not ' + ISA[attempted] + '</div>' +
+    '<div class="note-why">The ' + SHORT[attempted] + ' ring holds ' + REQUIREMENT[attempted] + '. ' +
+      n.trait + '</div>' +
+    '<div class="note-chain">' + n.why + '</div>';
+}
+
+function showEmptyRegion(n) {
+  noteEl.className = 'note-card close';
+  noteEl.innerHTML =
+    '<div class="note-head">&#8709; &nbsp;Nothing can land here</div>' +
+    '<div class="note-why">' +
+      (n ? n.html + ' is ' + ISA[n.home] + ', so it belongs inside ' + setName(n.home) + '. '
+         : '') +
+      'This band is the part of ' + setName('real') + ' that lies outside <b>both</b> ' +
+      setName('rational') + ' and ' + setName('irrational') + ' — and no number lives there. ' +
+      'Either a number can be written as a ratio of two integers or it cannot. There is no third ' +
+      'option, so the two regions together use up all of Real.</div>' +
+    '<div class="note-chain">Not every band is empty, though — that is what makes this one worth ' +
+      'marking. The band between ' + setName('rational') + ' and ' + setName('integer') +
+      ' holds every fraction and decimal that is not a whole amount. The band between ' +
+      setName('integer') + ' and ' + setName('whole') + ' holds the negatives. ' +
+      'Only this outer one gets &#8709;.</div>';
+}
+
+// ══════════════════════════════════════
+// DRAG
+// ══════════════════════════════════════
+function attachDrag(chip) {
+  chip.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const ghost = document.createElement('div');
+    ghost.className = 'drag-ghost';
+    ghost.innerHTML = chip.innerHTML;
+    ghost.style.left = e.clientX + 'px';
+    ghost.style.top  = e.clientY + 'px';
+    document.body.appendChild(ghost);
+
+    chip.classList.add('dragging');
+    dragState = { numId: chip.dataset.numId, sourceEl: chip, ghost };
+
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onEnd);
+  });
+}
+
+function ringAt(x, y) {
+  let best = null;
+  document.querySelectorAll('.ring').forEach(r => {
+    const b = r.getBoundingClientRect();
+    if (x >= b.left && x <= b.right && y >= b.top && y <= b.bottom) {
+      if (!best || +r.dataset.depth > +best.dataset.depth) best = r;
+    }
+  });
+  return best;
+}
+
+function onMove(e) {
+  if (!dragState) return;
+  dragState.ghost.style.left = e.clientX + 'px';
+  dragState.ghost.style.top  = e.clientY + 'px';
+  const hit = ringAt(e.clientX, e.clientY);
+  document.querySelectorAll('.ring').forEach(r => r.classList.toggle('dz-hover', r === hit));
+}
+
+function onEnd(e) {
+  if (!dragState) return;
+  document.removeEventListener('pointermove', onMove);
+  document.removeEventListener('pointerup', onEnd);
+
+  const hit = ringAt(e.clientX, e.clientY);
+  const num = NUMBERS.find(n => n.id === dragState.numId);
+  const src = dragState.sourceEl;
+
+  dragState.ghost.remove();
+  src.classList.remove('dragging');
+  document.querySelectorAll('.ring').forEach(r => r.classList.remove('dz-hover'));
+  dragState = null;
+
+  if (!hit) return;
+  const target = hit.dataset.set;
+
+  // Dropping in the empty band is a specific claim — "real but neither rational nor
+  // irrational" — and deserves a specific answer rather than the generic too-broad note.
+  const eb = document.getElementById('emptyRegion').getBoundingClientRect();
+  if (e.clientX >= eb.left && e.clientX <= eb.right &&
+      e.clientY >= eb.top  && e.clientY <= eb.bottom) {
+    revealSet('real');
+    showEmptyRegion(num);
+    flashEmpty();
+    src.classList.add('shake');
+    setTimeout(() => src.classList.remove('shake'), 340);
+    return;
+  }
+
+  // Unlock first, so the definition is on screen alongside whatever the note says next.
+  revealSet(target);
+
+  if (target === num.home) {
+    placed[num.id] = target;
+    renderTray(); renderPlaced(); renderProgress();
+    showTruth(num);
+    spotlight(num.home);
+  } else if (ANCESTRY[num.home].includes(target)) {
+    showTooBroad(num, target);
+    src.classList.add('shake');
+    setTimeout(() => src.classList.remove('shake'), 340);
+  } else {
+    showWrong(num, target);
+    src.classList.add('shake');
+    setTimeout(() => src.classList.remove('shake'), 340);
+  }
+}
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+// New numbers, but the panel keeps whatever the student has already unlocked —
+// re-locking definitions they have already read would be busywork, not discovery.
+function newRound() {
+  NUMBERS = generateRound();
+  placed = {};
+  noteEl.className = 'note-card';
+  noteEl.innerHTML = '<span class="note-idle">Twelve new numbers. Same job: drop each one in the ' +
+    'smallest set that will hold it.</span>';
+  document.querySelectorAll('.spotlight').forEach(el => el.classList.remove('spotlight'));
+  renderTray(); renderPlaced(); renderProgress();
+}
+
+function resetAll() {
+  NUMBERS = generateRound();
+  placed = {};
+  revealed = {};
+  renderDefs();
+  noteEl.className = 'note-card';
+  noteEl.innerHTML = '<span class="note-idle">Drop a number into a ring to see what is true about it — ' +
+    'and to unlock that set\'s definition on the right. Click any placed number to see its note again.</span>';
+  document.querySelectorAll('.spotlight').forEach(el => el.classList.remove('spotlight'));
+  renderTray(); renderPlaced(); renderProgress();
+}
+
+// ══════════════════════════════════════
+// EMBEDDING
+// The same file runs standalone (open it from Drive, a USB stick, file://) or inside an
+// iframe on a site. In a frame it drops its page chrome and reports its height to the
+// parent so the host can size the iframe to the content instead of guessing.
+// ══════════════════════════════════════
+function applyEmbedChrome() {
+  if (IN_FRAME) document.body.classList.add('embedded');
+  if (!opt('title', true)) document.body.classList.add('hide-title');
+}
+
+let lastHeight = 0;
+function reportHeight() {
+  if (!IN_FRAME) return;
+  const h = Math.ceil(document.documentElement.scrollHeight);
+  if (h === lastHeight) return;
+  lastHeight = h;
+  // Only a height integer crosses this boundary — no student data, nothing sensitive.
+  parent.postMessage({ type: 'number-set-nester:height', height: h }, '*');
+}
+
+function watchHeight() {
+  if (!IN_FRAME) return;
+  if (window.ResizeObserver) new ResizeObserver(reportHeight).observe(document.body);
+  window.addEventListener('resize', reportHeight);
+  window.addEventListener('load', reportHeight);
+  reportHeight();
+}
+
+applyEmbedChrome();
+attachStaticHandlers();
+resetAll();
+watchHeight();
+</script>
+</body>
+</html>

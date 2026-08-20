@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Number Set Venn — classification overlays</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Georgia', serif; background: #f5f0e8;
+    display: flex; align-items: flex-start; justify-content: center;
+    min-height: 100vh; padding: 40px 24px;
+  }
+  body.embedded { background: transparent; padding: 0; min-height: 0; }
+  body.embedded .widget { box-shadow: none; border-radius: 0; max-width: none; padding: 20px 22px 26px; }
+  body.hide-title .widget-title { display: none; }
+
+  .widget {
+    background: #fff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+    padding: 30px 34px 34px; max-width: 1080px; width: 100%;
+  }
+  .widget-title {
+    font-size: 13px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #999; text-align: center; margin-bottom: 6px;
+  }
+  .widget-sub { font-size: 14px; color: #666; text-align: center; margin-bottom: 20px; line-height: 1.5; }
+
+  /* ── MODE BUTTONS ── */
+  .modes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 22px; }
+  .mode-btn {
+    padding: 8px 17px; font-size: 13px; font-weight: 700; font-family: 'Georgia', serif;
+    border: 2px solid #e0dcd4; border-radius: 20px; background: #fff; color: #888;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .mode-btn:hover { background: #faf8f4; color: #555; }
+  .mode-btn.active { background: #333; border-color: #333; color: #fff; }
+
+  /* ── RINGS ── */
+  .ring { border-radius: 14px; border: 2.5px solid; padding: 26px 12px 12px; position: relative;
+          transition: opacity 0.25s, background 0.25s; }
+  .ring-tag {
+    position: absolute; top: 6px; left: 12px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+    display: flex; align-items: baseline; gap: 5px;
+  }
+  .ring-tag .sym { font-size: 14px; letter-spacing: 0; text-transform: none; }
+
+  .ring-real       { border-color: #b0a89a; background: #faf8f4; }
+  .ring-rational   { border-color: #5b8dd9; background: rgba(91,141,217,0.055); }
+  .ring-irrational { border-color: #e67e22; background: rgba(230,126,34,0.06); }
+  .ring-integer    { border-color: #1abc9c; background: rgba(26,188,156,0.07); }
+  .ring-whole      { border-color: #8e6bbf; background: rgba(142,107,191,0.07); }
+  .ring-natural    { border-color: #4caf7d; background: rgba(76,175,125,0.09); }
+
+  .ring-real > .ring-tag       { color: #8a8172; }
+  .ring-rational > .ring-tag   { color: #4272b8; }
+  .ring-irrational > .ring-tag { color: #c96a12; }
+  .ring-integer > .ring-tag    { color: #12907a; }
+  .ring-whole > .ring-tag      { color: #74539f; }
+  .ring-natural > .ring-tag    { color: #34875c; }
+
+  /* When an overlay is on, mute the rings so the overlay reads on top. */
+  .diagram.overlay-on .ring { background: #fcfbf9; }
+  .diagram.overlay-on .ring-tag { opacity: 0.5; }
+
+  .real-inner { display: flex; gap: 10px; align-items: stretch; }
+  .real-inner > .ring-rational { flex: 1 1 66%; }
+  .real-inner > .ring-irrational { flex: 1 1 34%; display: flex; flex-direction: column; }
+  .ring-irrational > .slot { flex: 1; }
+
+  .slot { display: flex; flex-wrap: wrap; gap: 5px; min-height: 34px; padding: 3px; align-content: flex-start; }
+
+  .empty-region {
+    margin-top: 10px; display: flex; align-items: center; gap: 10px; padding: 7px 12px;
+    border: 2px dashed #cfc7b8; border-radius: 10px;
+    background: repeating-linear-gradient(45deg, rgba(176,168,154,0.05) 0 6px, transparent 6px 12px);
+  }
+  .empty-sym { font-size: 22px; color: #8a8172; line-height: 1; }
+  .empty-text { font-size: 11px; line-height: 1.4; color: #8a8172; }
+
+  /* ── CHIPS ── */
+  .chip {
+    padding: 4px 10px; font-size: 13px; font-weight: 700; font-family: 'Georgia', serif;
+    border: 2px solid #ddd6c8; border-radius: 14px; background: #fff; color: #555;
+    display: inline-flex; align-items: center; white-space: nowrap;
+    animation: pop 0.25s ease-out;
+  }
+  @keyframes pop { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: none; } }
+
+  .c-prime     { border-color: #b5446e; color: #96305a; background: rgba(181,68,110,0.09); }
+  .c-composite { border-color: #b8860b; color: #8a6508; background: rgba(184,134,11,0.10); }
+  .c-neither   { border-color: #555; color: #333; background: #f0ede8; border-style: dashed; }
+  .c-even      { border-color: #6a4c93; color: #563c76; background: rgba(106,76,147,0.10); }
+  .c-odd       { border-color: #d1741f; color: #a85a13; background: rgba(209,116,31,0.10); }
+  .c-pos       { border-color: #2e8b57; color: #226b42; background: rgba(46,139,87,0.10); }
+  .c-neg       { border-color: #c0392b; color: #a03225; background: rgba(192,57,43,0.10); }
+  .c-zero      { border-color: #555; color: #333; background: #f0ede8; border-style: dashed; }
+  .c-na        { border-color: #ccc; color: #aaa; background: #fafafa; }
+
+  /* ── PRIME / COMPOSITE SUB-CIRCLES (these genuinely nest) ── */
+  .nat-split { display: flex; gap: 8px; align-items: stretch; margin-top: 2px; }
+  .subcircle { border: 2.5px solid; border-radius: 12px; padding: 20px 9px 8px; position: relative; flex: 1; }
+  .subcircle .ring-tag { font-size: 9.5px; top: 5px; left: 10px; }
+  .sub-prime     { border-color: #b5446e; background: rgba(181,68,110,0.06); }
+  .sub-prime > .ring-tag { color: #96305a; }
+  .sub-composite { border-color: #b8860b; background: rgba(184,134,11,0.06); }
+  .sub-composite > .ring-tag { color: #8a6508; }
+  .nat-leftover {
+    margin-top: 7px; display: flex; align-items: center; gap: 9px; padding: 6px 11px;
+    border: 2px dashed #999; border-radius: 10px; background: #f7f5f1;
+  }
+  .nat-leftover .lbl { font-size: 11px; line-height: 1.4; color: #666; }
+  .nat-leftover .lbl b { color: #333; }
+
+  /* ── EXPLANATION ── */
+  .explain {
+    margin-top: 18px; padding: 16px 20px; border-radius: 11px;
+    border: 2px solid #e8e2d8; background: #faf8f4;
+    font-size: 13.5px; line-height: 1.6; color: #555; min-height: 96px;
+  }
+  .explain h3 { font-size: 15px; color: #222; margin-bottom: 7px; }
+  .explain p { margin-bottom: 8px; }
+  .explain p:last-child { margin-bottom: 0; }
+  .explain b { color: #333; }
+  .verdict {
+    display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; padding: 3px 10px; border-radius: 10px; margin-bottom: 9px;
+  }
+  .v-nests  { background: rgba(76,175,125,0.14); color: #2d7a4a; }
+  .v-cuts   { background: rgba(230,126,34,0.14); color: #c96a12; }
+
+  /* ── LEFTOVER TABLE ── */
+  .leftover-panel { margin-top: 18px; }
+  .lp-head {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em;
+    text-transform: uppercase; color: #aaa; margin-bottom: 9px;
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid #eee; line-height: 1.45; }
+  th { font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: #aaa; font-weight: 700; }
+  td.leftover { font-weight: 700; }
+  .none { color: #4caf7d; }
+  .one  { color: #c0392b; }
+  tr.hl td { background: #fdf9ef; }
+</style>
+</head>
+<body>
+<div class="widget">
+  <div class="widget-title">Number Set Venn</div>
+  <div class="widget-sub">
+    The nesting of the number sets, plus the three other ways numbers get classified.<br>
+    <span style="font-size:12.5px;color:#999;">Only one of the three can be drawn as more rings. Click through to see why.</span>
+  </div>
+
+  <div class="modes" id="modes"></div>
+
+  <div class="diagram" id="diagram">
+    <div class="ring ring-real" data-set="real">
+      <div class="ring-tag"><span class="sym">&#8477;</span> Real</div>
+      <div class="real-inner">
+        <div class="ring ring-rational" data-set="rational">
+          <div class="ring-tag"><span class="sym">&#8474;</span> Rational</div>
+          <div class="ring ring-integer" data-set="integer">
+            <div class="ring-tag"><span class="sym">&#8484;</span> Integers</div>
+            <div class="ring ring-whole" data-set="whole">
+              <div class="ring-tag"><span class="sym">W</span> Whole</div>
+              <div class="ring ring-natural" data-set="natural">
+                <div class="ring-tag"><span class="sym">&#8469;</span> Natural</div>
+                <div id="natZone"></div>
+                <div class="slot" data-slot="natural"></div>
+              </div>
+              <div class="slot" data-slot="whole"></div>
+            </div>
+            <div class="slot" data-slot="integer"></div>
+          </div>
+          <div class="slot" data-slot="rational"></div>
+        </div>
+        <div class="ring ring-irrational" data-set="irrational">
+          <div class="ring-tag"><span class="sym">&#120128;</span> Irrational</div>
+          <div class="slot" data-slot="irrational"></div>
+        </div>
+      </div>
+      <div class="empty-region">
+        <span class="empty-sym">&#8709;</span>
+        <span class="empty-text">Inside Real but outside <b>both</b> Rational and Irrational — nothing lives here.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="explain" id="explain"></div>
+
+  <div class="leftover-panel">
+    <div class="lp-head">The question every split should raise: what is left over?</div>
+    <table id="leftoverTable">
+      <thead><tr><th>Split</th><th>Of which set</th><th>Left over</th><th>So the split is…</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const IN_FRAME = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+const PARAMS = new URLSearchParams(location.search);
+if (IN_FRAME) document.body.classList.add('embedded');
+if (/^(0|false|no)$/i.test(PARAMS.get('title') || '')) document.body.classList.add('hide-title');
+
+// ══════════════════════════════════════
+// MODES
+// ══════════════════════════════════════
+const MODES = {
+  base: {
+    label: 'Just the number sets',
+    chips: { natural: ['7','42'], whole: ['0'], integer: ['−3','−15'],
+             rational: ['3/4','0.25'], irrational: ['π','√2'] },
+    explain: `<h3>The nesting, on its own</h3>
+      <p>Each ring sits wholly inside the next. Every natural number is whole, every whole number
+      is an integer, every integer is rational — and the containment only runs one way. Irrational
+      is the one region that is not nested: it sits beside Rational, and nothing is in both.</p>
+      <p>The three classifications on the buttons above — prime/composite, even/odd,
+      positive/negative — are asking <b>different questions</b> about a number than "what kind of
+      number is it?" Only one of the three can be drawn as more rings on this diagram.</p>`
+  },
+
+  primes: {
+    label: 'Prime & Composite',
+    verdict: ['v-nests', 'These nest — draw them as rings'],
+    natSplit: true,
+    chips: { whole: ['0'], integer: ['−3'], rational: ['3/4'], irrational: ['π'] },
+    explain: `<h3>Prime and Composite go <em>inside</em> Natural</h3>
+      <p>These are the easy case. A prime is a natural number with exactly two distinct divisors;
+      a composite has more than two. Both are defined only for natural numbers, so both circles sit
+      entirely inside the innermost ring — real nesting, drawable as more rings.</p>
+      <p><b>But they do not fill it.</b> 1 has exactly one divisor, so it is neither prime nor
+      composite. It sits in the gap, alone. Compare that with the &#8709; band on the outer ring:
+      there, the two regions used up all of Real and nothing was left. Here the leftover is not
+      empty — it is exactly one number.</p>
+      <p>Worth noticing: <b>2 is the only even prime</b>, which is where this classification and the
+      even/odd one collide.</p>`
+  },
+
+  parity: {
+    label: 'Even & Odd',
+    verdict: ['v-cuts', 'These cut across — they cannot be rings here'],
+    chips: { natural: [['2','c-even'],['4','c-even'],['3','c-odd'],['7','c-odd']],
+             whole: [['0','c-even']],
+             integer: [['−2','c-even'],['−4','c-even'],['−3','c-odd'],['−1','c-odd']],
+             rational: [['3/4','c-na'],['0.25','c-na']],
+             irrational: [['π','c-na'],['√2','c-na']] },
+    explain: `<h3>Even and Odd slice through three rings at once</h3>
+      <p>Look where the purple chips landed: <b>2 and 4 inside Natural, 0 on the Whole band,
+      −2 and −4 out in the Integer band.</b> A single "even" circle would have to reach through
+      all three rings, so it cannot be drawn as a ring here — it is a cross-cut, not a subset of
+      any one ring.</p>
+      <p>Even and odd are defined only on the integers, so everything outside the Integer ring is
+      greyed out. 3/4 is not "neither even nor odd" in the way 1 is neither prime nor composite —
+      the question simply does not apply.</p>
+      <p><b>The split itself is clean, though:</b> every integer is even or odd, never both, with
+      nothing left over. Note that <b>0 is even</b> — it is 2 × 0.</p>`
+  },
+
+  sign: {
+    label: 'Positive & Negative',
+    verdict: ['v-cuts', 'These cut across everything — including the irrationals'],
+    chips: { natural: [['5','c-pos'],['12','c-pos']],
+             whole: [['0','c-zero']],
+             integer: [['−5','c-neg'],['−12','c-neg']],
+             rational: [['3/4','c-pos'],['−3/4','c-neg'],['0.25','c-pos']],
+             irrational: [['π','c-pos'],['−√2','c-neg']] },
+    explain: `<h3>Sign cuts across the whole diagram — but it is half-drawn already</h3>
+      <p>Positive and negative reach everywhere, irrationals included: π is positive, −√2 is
+      negative. No ring contains all the positives, so sign cannot be a ring either.</p>
+      <p><b>Except the diagram already encodes it for the integers.</b> That is exactly what the
+      two innermost rings are: <b>Natural = the positive integers. Whole = the non-negative
+      integers.</b> The step from Natural to Whole adds zero; the step from Whole to Integers adds
+      the negatives. So "non-negative" does not need a new circle inside ℤ — it is already
+      drawn, and it is called Whole.</p>
+      <p>Zero is the leftover again: not positive, not negative. Same shape as 1 being neither
+      prime nor composite.</p>`
+  }
+};
+
+// ══════════════════════════════════════
+// LEFTOVER TABLE — the intellectual payoff
+// ══════════════════════════════════════
+const LEFTOVERS = [
+  { key:'base',    split:'Rational | Irrational', of:'Real',     left:'nothing',  cls:'none',
+    verdict:'exhaustive — hence the &#8709; band' },
+  { key:'parity',  split:'Even | Odd',            of:'Integers', left:'nothing',  cls:'none',
+    verdict:'exhaustive' },
+  { key:'primes',  split:'Prime | Composite',     of:'Natural',  left:'1',        cls:'one',
+    verdict:'<b>not</b> exhaustive — 1 is neither' },
+  { key:'sign',    split:'Positive | Negative',   of:'Real',     left:'0',        cls:'one',
+    verdict:'<b>not</b> exhaustive — 0 is neither' }
+];
+
+function renderTable(active) {
+  document.querySelector('#leftoverTable tbody').innerHTML = LEFTOVERS.map(r => `
+    <tr class="${r.key === active ? 'hl' : ''}">
+      <td>${r.split}</td><td>${r.of}</td>
+      <td class="leftover ${r.cls}">${r.left}</td><td>${r.verdict}</td>
+    </tr>`).join('');
+}
+
+// ══════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════
+let current = 'base';
+
+function chip(text, cls) {
+  return '<span class="chip ' + (cls || '') + '">' + text + '</span>';
+}
+
+function render(key) {
+  current = key;
+  const m = MODES[key];
+
+  document.querySelectorAll('.mode-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.mode === key));
+  document.getElementById('diagram').classList.toggle('overlay-on', key !== 'base');
+
+  // clear
+  document.querySelectorAll('.slot').forEach(s => s.innerHTML = '');
+  document.getElementById('natZone').innerHTML = '';
+
+  // prime/composite get real sub-circles, because they really do nest
+  if (m.natSplit) {
+    document.getElementById('natZone').innerHTML = `
+      <div class="nat-split">
+        <div class="subcircle sub-prime">
+          <div class="ring-tag">Prime</div>
+          ${['2','3','5','7','11'].map(v => chip(v, 'c-prime')).join('')}
+        </div>
+        <div class="subcircle sub-composite">
+          <div class="ring-tag">Composite</div>
+          ${['4','6','8','9','10'].map(v => chip(v, 'c-composite')).join('')}
+        </div>
+      </div>
+      <div class="nat-leftover">
+        ${chip('1', 'c-neither')}
+        <span class="lbl"><b>Neither.</b> 1 has exactly one divisor — too few for prime,
+        too few for composite. The leftover here is one number, not nothing.</span>
+      </div>`;
+  }
+
+  // sample chips per ring
+  Object.entries(m.chips || {}).forEach(([slot, items]) => {
+    const el = document.querySelector('.slot[data-slot="' + slot + '"]');
+    if (!el) return;
+    el.innerHTML = items.map(it =>
+      Array.isArray(it) ? chip(it[0], it[1]) : chip(it)).join('');
+  });
+
+  const v = m.verdict ? `<span class="verdict ${m.verdict[0]}">${m.verdict[1]}</span>` : '';
+  document.getElementById('explain').innerHTML = v + m.explain;
+  renderTable(key);
+  reportHeight();
+}
+
+document.getElementById('modes').innerHTML = Object.entries(MODES).map(([k, m]) =>
+  `<button class="mode-btn" data-mode="${k}">${m.label}</button>`).join('');
+document.querySelectorAll('.mode-btn').forEach(b =>
+  b.addEventListener('click', () => render(b.dataset.mode)));
+
+// ── embed auto-height ──
+let lastH = 0;
+function reportHeight() {
+  if (!IN_FRAME) return;
+  const h = Math.ceil(document.documentElement.scrollHeight);
+  if (h === lastH) return;
+  lastH = h;
+  parent.postMessage({ type: 'number-set-venn:height', height: h }, '*');
+}
+if (IN_FRAME && window.ResizeObserver) new ResizeObserver(reportHeight).observe(document.body);
+addEventListener('resize', reportHeight);
+
+render('base');
+</script>
+</body>
+</html>
