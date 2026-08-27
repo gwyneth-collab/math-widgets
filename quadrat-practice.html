@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quadrat Practice — Percent Cover</title>
+<style>
+  /*
+    QUADRAT PRACTICE — student widget
+    ─────────────────────────────────
+    The data-collection half of the quadrat sampling lesson, pulled out to stand
+    on its own so it can be hosted publicly and worked on in class. The teaching
+    around it (why we sample, how to read a square, why one square is not enough)
+    is delivered by the teacher from class-script.md — this file assumes that
+    conversation has just happened and only reminds.
+
+    Vegetation is generated from fixed seeds, so every student sees the identical
+    four quadrats and the work is gradeable. True percent cover is counted off the
+    generated field rather than authored, so the key is exact by construction.
+
+    Self-contained: no server, no CDN, no fonts, no build step. Runs from file://.
+  */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #efeade;
+    --card: #fffdf8;
+    --ink: #23301f;
+    --body: #4b5347;
+    --muted: #7d8577;
+    --accent: #2f6b4f;
+    --accent-soft: #e3efe6;
+    --edge: #b4622a;
+    --edge-soft: #f7e9dd;
+    --warn: #b03030;
+    --border: #ded5c2;
+  }
+
+  body {
+    font-family: "Iowan Old Style", Georgia, "Times New Roman", serif;
+    background: var(--bg);
+    color: var(--body);
+    line-height: 1.5;
+    padding: 20px 14px 48px;
+  }
+
+  .widget {
+    max-width: 1000px; margin: 0 auto;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 26px 28px 30px;
+    box-shadow: 0 6px 20px rgba(60,50,20,.07);
+  }
+
+  /* Embedded in an iframe: drop the page chrome so the host page's background
+     and spacing show through, and let the host size the frame. */
+  body.embedded { background: transparent; padding: 0; }
+  body.embedded .widget { box-shadow: none; border-radius: 0; border: none; max-width: none; padding: 18px 20px 24px; }
+  body.hide-title .widget-title { display: none; }
+
+  .widget-title h1 { font-size: 1.42rem; color: var(--ink); letter-spacing: -.01em; }
+  .widget-title .sub { color: var(--muted); font-size: .9rem; margin-top: 3px; }
+  .widget-title { margin-bottom: 18px; }
+
+  p { margin-bottom: 11px; }
+  strong { color: var(--ink); }
+  h2 { font-size: 1.05rem; color: var(--ink); margin-bottom: 8px; }
+
+  /* ---- reminder ---- */
+  .reminder { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
+  .reminder summary {
+    cursor: pointer; padding: 11px 15px; font-size: .88rem; color: var(--ink);
+    background: #f7f3e9; list-style: none;
+  }
+  .reminder summary::-webkit-details-marker { display: none; }
+  .reminder summary::before { content: "▸ "; color: var(--muted); }
+  .reminder[open] summary::before { content: "▾ "; }
+  .reminder .body { padding: 15px 17px 5px; font-size: .91rem; }
+  .reminder ol { margin: 0 0 12px 20px; }
+  .reminder li { margin-bottom: 7px; }
+
+  /* ---- name ---- */
+  .namerow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+  .namerow label { font-size: .84rem; color: var(--muted); }
+  input.name {
+    font: inherit; font-size: .92rem; padding: 7px 11px; min-width: 230px;
+    border: 1px solid var(--border); border-radius: 7px; background: #fff; color: var(--ink);
+  }
+  input.name:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+  /* ---- progress ---- */
+  .progress { display: flex; gap: 7px; margin-bottom: 18px; flex-wrap: wrap; }
+  .progress button {
+    font: inherit; font-size: .84rem; cursor: pointer;
+    background: var(--card); color: var(--body);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 6px 14px; display: flex; align-items: center; gap: 7px;
+  }
+  .progress button:hover { border-color: var(--accent); }
+  .progress button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .progress button .dot {
+    width: 15px; height: 15px; border-radius: 50%; font-size: .62rem;
+    display: grid; place-items: center; background: rgba(0,0,0,.09); color: var(--muted);
+  }
+  .progress button.active .dot { background: rgba(255,255,255,.25); color: #fff; }
+  .progress button.done .dot { background: var(--accent); color: #fff; }
+  .progress button.active.done .dot { background: #fff; color: var(--accent); }
+
+  /* ---- layout ---- */
+  .split { display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap; }
+  .split > .left { flex: 1 1 360px; min-width: 0; max-width: 430px; }
+  .split > .right { flex: 1 1 300px; min-width: 0; }
+
+  /* ---- quadrat frame ---- */
+  .frame-wrap { position: relative; width: 100%; }
+  .frame {
+    position: relative; width: 100%; aspect-ratio: 1;
+    border: 7px solid #6d6459; border-radius: 3px;
+    box-shadow: 0 4px 14px rgba(40,30,10,.22), inset 0 0 0 2px #918777;
+    overflow: hidden;
+  }
+  .frame canvas { display: block; width: 100%; height: 100%; }
+  .frame svg.grid { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  /* the UA [hidden] rule does not reach SVG elements in an HTML document */
+  .frame svg.grid[hidden] { display: none; }
+  .frame-cap {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: .8rem; color: var(--muted); margin-top: 7px; gap: 10px;
+  }
+  .frame-cap .station { color: var(--ink); font-weight: 600; }
+
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+  button.btn {
+    font: inherit; font-size: .88rem;
+    background: var(--accent); color: #fff;
+    border: 1px solid var(--accent); border-radius: 8px;
+    padding: 8px 16px; cursor: pointer;
+  }
+  button.btn:hover:not(:disabled) { filter: brightness(1.08); }
+  button.btn.ghost { background: transparent; color: var(--accent); }
+  button.btn.ghost:hover:not(:disabled) { background: var(--accent-soft); filter: none; }
+  button.btn:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+  button.btn.small { font-size: .8rem; padding: 6px 12px; }
+
+  /* ---- data table ---- */
+  table.data { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  table.data th {
+    text-align: left; font-size: .74rem; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--muted); font-weight: 600;
+    padding: 0 8px 7px; border-bottom: 1px solid var(--border);
+  }
+  table.data th.num, table.data td.num { text-align: right; }
+  table.data td { padding: 7px 8px; border-bottom: 1px solid #eee7d8; vertical-align: middle; }
+  table.data tr.total td { border-top: 2px solid var(--border); border-bottom: none; font-weight: 600; color: var(--ink); }
+
+  .swatch {
+    display: inline-block; width: 15px; height: 15px; border-radius: 3px;
+    vertical-align: -3px; margin-right: 8px; border: 1px solid rgba(0,0,0,.14);
+  }
+  .sp-name { color: var(--ink); }
+  .sp-note { color: var(--muted); font-size: .78rem; display: block; }
+
+  input.pct {
+    font: inherit; font-size: .9rem; width: 64px; text-align: right;
+    padding: 5px 7px; border: 1px solid var(--border); border-radius: 6px;
+    background: #fff; color: var(--ink);
+  }
+  input.pct:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  input.pct:disabled { background: #f6f2e8; color: var(--muted); }
+
+  .tot-flag { font-size: .8rem; margin-left: 8px; font-weight: normal; }
+  .tot-flag.ok { color: var(--accent); }
+  .tot-flag.bad { color: var(--warn); }
+
+  .verdict { font-size: .82rem; white-space: nowrap; }
+  .verdict.good { color: var(--accent); }
+  .verdict.close { color: var(--edge); }
+  .verdict.off { color: var(--warn); }
+
+  .callout {
+    border-left: 3px solid var(--accent); background: var(--accent-soft);
+    padding: 12px 15px; border-radius: 0 8px 8px 0; font-size: .9rem; margin-top: 14px;
+  }
+  .callout.edge { border-left-color: var(--edge); background: var(--edge-soft); }
+
+  /* ---- cover reference card ---- */
+  .covercard { margin-top: 16px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .covercard summary {
+    cursor: pointer; padding: 10px 14px; font-size: .84rem; color: var(--ink);
+    background: #f7f3e9; list-style: none;
+  }
+  .covercard summary::-webkit-details-marker { display: none; }
+  .covercard summary::before { content: "▸ "; color: var(--muted); }
+  .covercard[open] summary::before { content: "▾ "; }
+  .covercard .body { padding: 14px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .covercard .chip { text-align: center; font-size: .74rem; color: var(--muted); }
+  .covercard .chip canvas { display: block; border: 1px solid var(--border); border-radius: 3px; margin-bottom: 4px; }
+
+  /* ---- final summary ---- */
+  .final { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--border); }
+  .final[hidden] { display: none; }
+  .scoregrid { display: flex; gap: 12px; flex-wrap: wrap; margin: 14px 0 4px; }
+  .scorecard {
+    flex: 1 1 140px; border: 1px solid var(--border); border-radius: 10px;
+    padding: 13px; text-align: center; background: #fff;
+  }
+  .scorecard .big { font-size: 1.5rem; color: var(--ink); font-weight: 600; }
+  .scorecard .lbl { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .handin { font-size: .95rem; color: var(--ink); margin-top: 14px;
+    background: #f7f3e9; border: 1px dashed var(--border); border-radius: 9px; padding: 13px 15px; }
+
+  @media (max-width: 620px) {
+    body { padding: 12px 8px 36px; }
+    .widget { padding: 16px; }
+    .split { gap: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="widget">
+
+  <div class="widget-title">
+    <h1>Quadrat Practice: reading percent cover</h1>
+    <div class="sub">Four 1 m × 1 m quadrats along a schoolyard tape · record every row · your column must total 100%</div>
+  </div>
+
+  <details class="reminder">
+    <summary>Remind me how to do this</summary>
+    <div class="body">
+      <ol>
+        <li><strong>Look straight down.</strong> Percent cover is what hides the ground when you look from directly above — not how many plants there are.</li>
+        <li><strong>Use the grid.</strong> 10 × 10 = 100 cells, so <strong>one cell = 1%</strong>. Count cells instead of guessing. Two half-cells make one whole cell.</li>
+        <li><strong>One species at a time.</strong> Count the patchy ones first.</li>
+        <li><strong>Don't count the dominant species.</strong> Give it whatever is left over — 100 minus everything else. Faster, and no extra error.</li>
+        <li><strong>Bare ground and leaf litter count.</strong> Every bit of ground is covered by something, so the column adds to 100%.</li>
+      </ol>
+    </div>
+  </details>
+
+  <div class="namerow">
+    <label for="studentName">Your name</label>
+    <input class="name" id="studentName" autocomplete="off" placeholder="so your teacher knows whose this is">
+  </div>
+
+  <div class="progress" id="progress"></div>
+
+  <div class="split">
+    <div class="left">
+      <div class="frame-wrap">
+        <div class="frame">
+          <canvas id="qCanvas" width="600" height="600"></canvas>
+          <svg class="grid" id="qGrid" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+        </div>
+        <div class="frame-cap">
+          <span class="station" id="qStation"></span>
+          <span id="qCount"></span>
+        </div>
+        <div class="controls">
+          <button class="btn ghost small" id="gridBtn">Hide 1% grid</button>
+          <button class="btn ghost small" id="prevBtn">← Previous</button>
+          <button class="btn ghost small" id="nextBtn">Next →</button>
+        </div>
+      </div>
+
+      <details class="covercard">
+        <summary>Cover reference — what 1%, 5%, 10%, 25%, 50% look like</summary>
+        <div class="body" id="coverChips"></div>
+      </details>
+    </div>
+
+    <div class="right">
+      <table class="data">
+        <thead>
+          <tr>
+            <th>Species / ground cover</th>
+            <th class="num">Your&nbsp;%</th>
+            <th class="num" id="thTruth" hidden>Actual</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+        <tfoot id="foot"></tfoot>
+      </table>
+      <div class="controls" style="margin-top:14px">
+        <button class="btn" id="checkBtn">Check this quadrat</button>
+      </div>
+      <div id="feedback"></div>
+    </div>
+  </div>
+
+  <div class="final" id="final" hidden>
+    <h2>Finished — this is what you hand in</h2>
+    <p style="font-size:.9rem;color:var(--muted)">Screenshot this, or copy the numbers onto your data sheet.</p>
+    <div class="scoregrid" id="scoregrid"></div>
+    <div class="handin" id="handin"></div>
+    <div class="controls" style="margin-top:16px">
+      <button class="btn ghost small" id="resetBtn">Start over</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════
+// Query-string options, so one hosted copy can serve more than one embed:
+//   ?title=0    hide the widget's own heading, for a page that supplies its own
+// ══════════════════════════════════════
+const PARAMS = new URLSearchParams(location.search);
+function opt(name, dflt) {
+  const v = PARAMS.get(name);
+  return v === null ? dflt : !/^(0|false|no|off)$/i.test(v);
+}
+const IN_FRAME = (function () { try { return window.self !== window.top; } catch (e) { return true; } })();
+
+// ══════════════════════════════════════
+// Seeded PRNG — every student gets identical quadrats
+// ══════════════════════════════════════
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    var t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+const SPECIES = {
+  staug:  { name: 'St. Augustine grass', note: 'broad flat blades, the lawn turf', color: '#4a7c42', kind: 'turf' },
+  crab:   { name: 'Crabgrass',           note: 'pale, spreads in flat stars',      color: '#93a840', kind: 'crab' },
+  dollar: { name: 'Dollarweed',          note: 'round coin-shaped leaves',         color: '#5cb551', kind: 'dollar' },
+  sedge:  { name: 'Nutsedge',            note: 'stiff triangular stems, taller',   color: '#5f9e7a', kind: 'sedge' },
+  clover: { name: 'White clover',        note: 'three round leaflets',             color: '#3f8a55', kind: 'clover' },
+  moss:   { name: 'Moss',                note: 'dense low green in the shade',     color: '#376b3c', kind: 'moss' },
+  litter: { name: 'Leaf litter',         note: 'non-living — dead leaves, clippings', color: '#9a7a4e', kind: 'litter' },
+  bare:   { name: 'Bare ground',         note: 'non-living — soil, sand, no cover',   color: '#bfa77e', kind: 'bare' }
+};
+
+const N = 60; // subcells per side: 3600 per quadrat
+
+/* Patch counts and radii were fitted so each quadrat hits a deliberate cover
+   profile: no quadrat is monodominant (that makes estimation trivial), and the
+   four together show the mown -> unmown -> shade gradient. Change a seed and
+   you must refit. */
+const QUADRATS = [
+  { id: 'Q1', station: '0 m — mowed lawn', seed: 4117, base: 'staug',
+    patches: [ {sp:'crab', n:5, r:7.84}, {sp:'bare', n:6, r:5.34}, {sp:'dollar', n:5, r:4.38} ],
+    keys: ['staug','crab','dollar','bare'] },
+
+  { id: 'Q2', station: '4 m — mower turnaround', seed: 9043, base: 'staug',
+    patches: [ {sp:'bare', n:6, r:10.73}, {sp:'crab', n:7, r:6.83}, {sp:'sedge', n:6, r:4.27}, {sp:'litter', n:7, r:3.08} ],
+    keys: ['staug','crab','sedge','litter','bare'] },
+
+  { id: 'Q3', station: '8 m — unmowed margin', seed: 2288, base: 'crab',
+    patches: [ {sp:'sedge', n:9, r:9.7}, {sp:'dollar', n:6, r:6.6}, {sp:'clover', n:7, r:6.5}, {sp:'staug', n:4, r:6.5}, {sp:'litter', n:3, r:5.01} ],
+    keys: ['crab','sedge','dollar','clover','staug','litter'] },
+
+  { id: 'Q4', station: '12 m — hedge edge, deep shade', seed: 7351, base: 'litter',
+    patches: [ {sp:'moss', n:12, r:8.24}, {sp:'bare', n:5, r:6.41}, {sp:'sedge', n:6, r:4.61}, {sp:'staug', n:4, r:4} ],
+    keys: ['litter','moss','bare','sedge','staug'] }
+];
+
+// ══════════════════════════════════════
+// Field generation — irregular blobs painted onto a subcell grid
+// ══════════════════════════════════════
+function makeField(seed, base, patches, n) {
+  n = n || N;
+  const rnd = mulberry32(seed);
+  const f = new Array(n * n).fill(base);
+  const scale = n / N;
+  patches.forEach(function (p) {
+    for (let k = 0; k < p.n; k++) {
+      const cx = rnd() * n, cy = rnd() * n;
+      const r = p.r * scale * (0.6 + 0.8 * rnd());
+      const wob = [];
+      for (let a = 0; a < 8; a++) wob.push(0.6 + 0.75 * rnd());
+      const y0 = Math.max(0, Math.floor(cy - r - 1)), y1 = Math.min(n, Math.ceil(cy + r + 1));
+      const x0 = Math.max(0, Math.floor(cx - r - 1)), x1 = Math.min(n, Math.ceil(cx + r + 1));
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          let ang = (Math.atan2(dy, dx) + Math.PI) / (2 * Math.PI) * 8;
+          if (ang >= 8) ang = 0;
+          const i0 = Math.floor(ang), i1 = (i0 + 1) % 8, t = ang - i0;
+          const rr = r * (wob[i0] * (1 - t) + wob[i1] * t);
+          if (d < rr) f[y * n + x] = p.sp;
+        }
+      }
+    }
+  });
+  return f;
+}
+
+function coverOf(field, keys) {
+  const c = {};
+  keys.forEach(function (k) { c[k] = 0; });
+  for (let i = 0; i < field.length; i++) if (c[field[i]] !== undefined) c[field[i]]++;
+  const out = {};
+  keys.forEach(function (k) { out[k] = c[k] / field.length * 100; });
+  return out;
+}
+
+// ══════════════════════════════════════
+// Rendering
+// ══════════════════════════════════════
+const BASE_COLOR = {
+  turf: '#4a7c42', crab: '#93a840', dollar: '#5cb551', sedge: '#5f9e7a',
+  clover: '#3f8a55', moss: '#376b3c', litter: '#9a7a4e', bare: '#bfa77e'
+};
+
+/* Each subcell is painted edge to edge first, then detailed — if the base only
+   covered a circle, the soil showing at the corners would read as a grid. */
+function drawCell(ctx, kind, x, y, s, rnd) {
+  ctx.save();
+  ctx.fillStyle = BASE_COLOR[kind] || BASE_COLOR.bare;
+  ctx.fillRect(x - 0.5, y - 0.5, s + 1, s + 1);
+  ctx.translate(x + s / 2, y + s / 2);
+  ctx.lineCap = 'round';
+  const j = function (m) { return (rnd() - 0.5) * m * s; };
+  const h = s / 2;
+
+  switch (kind) {
+    case 'turf':
+      ctx.strokeStyle = '#3a6434'; ctx.lineWidth = s * 0.16;
+      for (let i = 0; i < 2; i++) { ctx.beginPath(); ctx.moveTo(j(0.6), h * 0.8); ctx.lineTo(j(0.6), -h * 0.8); ctx.stroke(); }
+      break;
+    case 'crab':
+      ctx.strokeStyle = '#7d9033'; ctx.lineWidth = s * 0.13;
+      for (let i = 0; i < 3; i++) {
+        const a = rnd() * 6.284;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * h * 1.1, Math.sin(a) * h * 1.1); ctx.stroke();
+      }
+      break;
+    case 'dollar':
+      ctx.fillStyle = '#7ccb70';
+      ctx.beginPath(); ctx.arc(j(0.3), j(0.3), h * 0.68, 0, 6.284); ctx.fill();
+      ctx.strokeStyle = '#3f8c3a'; ctx.lineWidth = s * 0.09;
+      ctx.beginPath(); ctx.arc(j(0.3), j(0.3), h * 0.68, 0, 6.284); ctx.stroke();
+      break;
+    case 'sedge':
+      ctx.strokeStyle = '#457a5c'; ctx.lineWidth = s * 0.12;
+      for (let i = 0; i < 3; i++) {
+        const lean = (rnd() - 0.5) * s * 0.8;
+        ctx.beginPath(); ctx.moveTo(-h * 0.55 + i * h * 0.55, h);
+        ctx.lineTo(-h * 0.55 + i * h * 0.55 + lean, -h); ctx.stroke();
+      }
+      break;
+    case 'clover':
+      ctx.fillStyle = '#5cab6e';
+      for (let i = 0; i < 3; i++) {
+        const a = i * 2.094 + rnd() * 0.4;
+        ctx.beginPath(); ctx.arc(Math.cos(a) * h * 0.44, Math.sin(a) * h * 0.44, h * 0.44, 0, 6.284); ctx.fill();
+      }
+      break;
+    case 'moss':
+      ctx.fillStyle = '#4b8348';
+      for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.arc(j(1.7), j(1.7), s * 0.12, 0, 6.284); ctx.fill(); }
+      break;
+    case 'litter':
+      ctx.strokeStyle = '#7d5f39'; ctx.lineWidth = s * 0.16;
+      for (let i = 0; i < 2; i++) {
+        const a = rnd() * 6.284;
+        ctx.beginPath();
+        ctx.moveTo(-Math.cos(a) * h * 0.9, -Math.sin(a) * h * 0.9);
+        ctx.lineTo(Math.cos(a) * h * 0.9, Math.sin(a) * h * 0.9); ctx.stroke();
+      }
+      break;
+    default:
+      ctx.fillStyle = '#a68e66';
+      for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(j(1.7), j(1.7), s * 0.1, 0, 6.284); ctx.fill(); }
+  }
+  ctx.restore();
+}
+
+function drawField(canvas, field, n, seed) {
+  const ctx = canvas.getContext('2d');
+  const s = canvas.width / n;
+  const rnd = mulberry32(seed * 7 + 13);
+  ctx.fillStyle = '#b9a074';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (let y = 0; y < n; y++)
+    for (let x = 0; x < n; x++)
+      drawCell(ctx, SPECIES[field[y * n + x]].kind, x * s, y * s, s, rnd);
+}
+
+function buildGrid(svg) {
+  let h = '';
+  for (let i = 1; i < 10; i++) {
+    h += '<line x1="' + i * 10 + '" y1="0" x2="' + i * 10 + '" y2="100" stroke="rgba(255,255,255,.62)" stroke-width=".5"/>';
+    h += '<line x1="0" y1="' + i * 10 + '" x2="100" y2="' + i * 10 + '" stroke="rgba(255,255,255,.62)" stroke-width=".5"/>';
+  }
+  svg.innerHTML = h;
+}
+
+/* SVGElement has no `hidden` IDL property — toggle the attribute. */
+function setHidden(el, v) { if (v) el.setAttribute('hidden', ''); else el.removeAttribute('hidden'); }
+
+// ══════════════════════════════════════
+// State
+// ══════════════════════════════════════
+QUADRATS.forEach(function (q) {
+  q.field = makeField(q.seed, q.base, q.patches, N);
+  q.truth = coverOf(q.field, q.keys);
+  q.entries = {};
+  q.checked = false;
+  q.error = null;
+});
+let qi = 0;
+let gridOn = true;
+
+const STORE = 'quadrat-practice-v1';
+function save() {
+  try {
+    localStorage.setItem(STORE, JSON.stringify({
+      name: document.getElementById('studentName').value,
+      q: QUADRATS.map(function (q) { return { e: q.entries, c: q.checked, err: q.error }; })
+    }));
+  } catch (e) { /* private browsing, blocked storage — the widget still works */ }
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE);
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    if (d.name) document.getElementById('studentName').value = d.name;
+    if (Array.isArray(d.q)) d.q.forEach(function (s, i) {
+      if (!QUADRATS[i] || !s) return;
+      QUADRATS[i].entries = s.e || {};
+      QUADRATS[i].checked = !!s.c;
+      QUADRATS[i].error = typeof s.err === 'number' ? s.err : null;
+    });
+  } catch (e) { /* corrupt or unavailable — start clean */ }
+}
+
+const qCanvas = document.getElementById('qCanvas');
+const qGrid = document.getElementById('qGrid');
+buildGrid(qGrid);
+
+// ══════════════════════════════════════
+// Render
+// ══════════════════════════════════════
+function renderProgress() {
+  const p = document.getElementById('progress');
+  p.innerHTML = '';
+  QUADRATS.forEach(function (q, i) {
+    const b = document.createElement('button');
+    b.className = (i === qi ? 'active ' : '') + (q.checked ? 'done' : '');
+    b.innerHTML = '<span class="dot">' + (q.checked ? '✓' : (i + 1)) + '</span>' + q.id;
+    b.onclick = function () { qi = i; render(); };
+    p.appendChild(b);
+  });
+}
+
+function currentTotal() {
+  const q = QUADRATS[qi];
+  return q.keys.reduce(function (s, k) { return s + (q.entries[k] || 0); }, 0);
+}
+
+function renderFoot() {
+  const q = QUADRATS[qi];
+  const tot = currentTotal();
+  const ok = tot >= 98 && tot <= 102;
+  const flag = q.checked ? '' :
+    '<span class="tot-flag ' + (ok ? 'ok' : 'bad') + '">' +
+    (ok ? '✓' : (tot > 102 ? 'over by ' + Math.round(tot - 100) : 'short by ' + Math.round(100 - tot))) + '</span>';
+  document.getElementById('foot').innerHTML =
+    '<tr class="total"><td>Total</td><td class="num">' + Math.round(tot) + '%' + flag + '</td>' +
+    (q.checked ? '<td class="num">100%</td>' : '') + '</tr>';
+  const btn = document.getElementById('checkBtn');
+  btn.disabled = q.checked || !ok;
+  btn.textContent = q.checked ? 'Checked' : 'Check this quadrat';
+}
+
+function renderFeedback() {
+  const q = QUADRATS[qi];
+  const box = document.getElementById('feedback');
+  if (!q.checked) { box.innerHTML = ''; return; }
+  const worst = q.keys.slice().sort(function (a, b) {
+    return Math.abs((q.entries[b] || 0) - q.truth[b]) - Math.abs((q.entries[a] || 0) - q.truth[a]);
+  })[0];
+  const wd = Math.round(Math.abs((q.entries[worst] || 0) - q.truth[worst]));
+  let msg;
+  if (q.error <= 6) msg = '<strong>Solid.</strong> Mean error ' + q.error.toFixed(1) + ' points. That is field-quality data — two trained surveyors routinely differ by more than this.';
+  else if (q.error <= 12) msg = '<strong>Usable.</strong> Mean error ' + q.error.toFixed(1) + ' points. Your biggest miss was ' + SPECIES[worst].name + ', off by ' + wd + '. Patchy species scattered in small clumps are the ones people under-count.';
+  else msg = '<strong>Too rough.</strong> Mean error ' + q.error.toFixed(1) + ' points. Turn the grid on and count cells for ' + SPECIES[worst].name + ' rather than eyeballing the whole square at once.';
+  box.innerHTML = '<div class="callout">' + msg + '</div>';
+}
+
+function render() {
+  const q = QUADRATS[qi];
+  document.getElementById('qStation').textContent = q.id + ' · ' + q.station;
+  document.getElementById('qCount').textContent = 'Quadrat ' + (qi + 1) + ' of ' + QUADRATS.length;
+  setHidden(qGrid, !gridOn);
+  document.getElementById('gridBtn').textContent = gridOn ? 'Hide 1% grid' : 'Show 1% grid';
+  drawField(qCanvas, q.field, N, q.seed);
+  document.getElementById('prevBtn').disabled = qi === 0;
+  document.getElementById('nextBtn').disabled = qi === QUADRATS.length - 1;
+  document.getElementById('thTruth').hidden = !q.checked;
+
+  const tb = document.getElementById('rows');
+  tb.innerHTML = '';
+  q.keys.forEach(function (k) {
+    const sp = SPECIES[k];
+    const tr = document.createElement('tr');
+    const val = q.entries[k] === undefined ? '' : q.entries[k];
+    let truthCell = '';
+    if (q.checked) {
+      const t = Math.round(q.truth[k]);
+      const d = Math.abs((q.entries[k] || 0) - t);
+      const cls = d <= 8 ? 'good' : (d <= 16 ? 'close' : 'off');
+      const word = d <= 8 ? 'good' : (d <= 16 ? 'close' : 'off by ' + d);
+      truthCell = '<td class="num"><span class="verdict ' + cls + '">' + t + '% · ' + word + '</span></td>';
+    }
+    tr.innerHTML =
+      '<td><span class="swatch" style="background:' + sp.color + '"></span>' +
+      '<span class="sp-name">' + sp.name + '</span><span class="sp-note">' + sp.note + '</span></td>' +
+      '<td class="num"><input class="pct" inputmode="numeric" data-k="' + k + '" value="' + val + '"' + (q.checked ? ' disabled' : '') + '></td>' +
+      truthCell;
+    tb.appendChild(tr);
+  });
+
+  tb.querySelectorAll('input.pct').forEach(function (inp) {
+    inp.oninput = function () {
+      const v = parseFloat(inp.value);
+      QUADRATS[qi].entries[inp.dataset.k] = isNaN(v) ? undefined : v;
+      renderFoot(); save();
+    };
+  });
+
+  renderProgress();
+  renderFoot();
+  renderFeedback();
+  renderFinal();
+  reportHeight();
+}
+
+function renderFinal() {
+  const done = QUADRATS.filter(function (q) { return q.checked; });
+  const box = document.getElementById('final');
+  if (done.length < QUADRATS.length) { box.hidden = true; return; }
+  box.hidden = false;
+  const mean = done.reduce(function (a, q) { return a + q.error; }, 0) / done.length;
+  const grade = mean <= 6 ? 'Field-ready' : mean <= 12 ? 'Usable' : 'Redo';
+  document.getElementById('scoregrid').innerHTML =
+    '<div class="scorecard"><div class="big">' + done.length + ' / ' + QUADRATS.length + '</div><div class="lbl">Quadrats recorded</div></div>' +
+    '<div class="scorecard"><div class="big">' + mean.toFixed(1) + '</div><div class="lbl">Mean error (pts)</div></div>' +
+    '<div class="scorecard"><div class="big">' + grade + '</div><div class="lbl">Estimation quality</div></div>';
+  const nm = document.getElementById('studentName').value.trim();
+  const per = QUADRATS.map(function (q) { return q.id + ' ' + q.error.toFixed(1); }).join(' · ');
+  document.getElementById('handin').innerHTML =
+    '<strong>' + (nm ? nm : '(add your name above)') + '</strong> — ' + done.length + ' / ' + QUADRATS.length +
+    ' quadrats, mean error ' + mean.toFixed(1) + ' points, <strong>' + grade + '</strong>.' +
+    '<br><span style="font-size:.84rem;color:var(--muted)">Per quadrat: ' + per + '</span>' +
+    (mean <= 6 ? ' Two trained surveyors routinely differ by more than that.'
+      : mean <= 12 ? ' Good enough to use. Counting cells rather than eyeballing will tighten it.'
+      : ' Worth doing again with the grid on — count cells for the patchy species.');
+}
+
+// ══════════════════════════════════════
+// Handlers
+// ══════════════════════════════════════
+document.getElementById('checkBtn').onclick = function () {
+  const q = QUADRATS[qi];
+  let sum = 0;
+  q.keys.forEach(function (k) { sum += Math.abs((q.entries[k] || 0) - q.truth[k]); });
+  q.error = sum / q.keys.length;
+  q.checked = true;
+  save();
+  render();
+};
+document.getElementById('gridBtn').onclick = function () { gridOn = !gridOn; render(); };
+document.getElementById('prevBtn').onclick = function () { if (qi > 0) { qi--; render(); } };
+document.getElementById('nextBtn').onclick = function () { if (qi < QUADRATS.length - 1) { qi++; render(); } };
+document.getElementById('studentName').oninput = function () { save(); renderFinal(); };
+document.getElementById('resetBtn').onclick = function () {
+  QUADRATS.forEach(function (q) { q.entries = {}; q.checked = false; q.error = null; });
+  qi = 0; save(); render();
+};
+
+// ══════════════════════════════════════
+// Cover reference chips
+// ══════════════════════════════════════
+(function () {
+  const box = document.getElementById('coverChips');
+  [1, 5, 10, 25, 50].forEach(function (pct) {
+    const wrap = document.createElement('div');
+    wrap.className = 'chip';
+    const c = document.createElement('canvas');
+    c.width = 180; c.height = 180;
+    c.style.width = '72px'; c.style.height = '72px';
+    const n = 30;
+    const target = Math.round(pct / 100 * n * n);
+    const rnd = mulberry32(900 + pct);
+    const f = new Array(n * n).fill('staug');
+    let placed = 0, guard = 0;
+    while (placed < target && guard++ < 8000) {
+      const cx = rnd() * n, cy = rnd() * n, r = 1.4 + rnd() * 2.2;
+      for (let y = Math.max(0, Math.floor(cy - r)); y < Math.min(n, Math.ceil(cy + r)); y++)
+        for (let x = Math.max(0, Math.floor(cx - r)); x < Math.min(n, Math.ceil(cx + r)); x++) {
+          if (placed >= target) break;
+          const dx = x + .5 - cx, dy = y + .5 - cy;
+          if (dx * dx + dy * dy < r * r && f[y * n + x] !== 'dollar') { f[y * n + x] = 'dollar'; placed++; }
+        }
+    }
+    drawField(c, f, n, 900 + pct);
+    wrap.appendChild(c);
+    wrap.appendChild(document.createTextNode(pct + '%'));
+    box.appendChild(wrap);
+  });
+})();
+
+// ══════════════════════════════════════
+// EMBEDDING
+// Runs standalone (file://, USB stick, Pages URL) or inside an iframe on a site.
+// In a frame it drops its page chrome and reports its height so the host can size
+// the iframe to the content. Only a height integer crosses that boundary —
+// no student data, nothing sensitive.
+// ══════════════════════════════════════
+if (IN_FRAME) document.body.classList.add('embedded');
+if (!opt('title', true)) document.body.classList.add('hide-title');
+
+let lastHeight = 0;
+function reportHeight() {
+  if (!IN_FRAME) return;
+  const h = Math.ceil(document.documentElement.scrollHeight);
+  if (h === lastHeight) return;
+  lastHeight = h;
+  parent.postMessage({ type: 'quadrat-practice:height', height: h }, '*');
+}
+if (IN_FRAME) {
+  if (window.ResizeObserver) new ResizeObserver(reportHeight).observe(document.body);
+  window.addEventListener('resize', reportHeight);
+  window.addEventListener('load', reportHeight);
+}
+
+load();
+render();
+</script>
+</body>
+</html>
