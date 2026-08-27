@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tray Sort — Twelve Schoolyard Samples</title>
+<style>
+  /*
+    ANIMAL TRANSECT / DIVERSITY INDICES
+    ───────────────────────────────────
+    Companion to the quadrat-sampling (plant cover) widget. Same schoolyard,
+    same four stations, same mown-to-hedge gradient — but animals, which
+    cannot be measured as percent cover because they are countable and they
+    move. So the data is counts of individuals, and the question becomes
+    "how do you turn a column of counts into one number for diversity?"
+
+    Every index value shown to the student is COMPUTED from the tray data at
+    runtime, never authored by hand, so the answer key cannot drift from the
+    figures.
+
+    Field identity inherited from the plant widget: kraft/field-notebook
+    palette, green = living / correct, orange = judgment call, and a new
+    indigo = "this is the math part".
+  */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #efeade;
+    --card: #fffdf8;
+    --ink: #23301f;
+    --body: #4b5347;
+    --muted: #7d8577;
+    --accent: #2f6b4f;      /* living / correct */
+    --accent-soft: #e3efe6;
+    --edge: #b4622a;        /* judgment call */
+    --edge-soft: #f7e9dd;
+    --math: #3c4a86;        /* the math part */
+    --math-soft: #e7e9f5;
+    --warn: #b03030;
+    --border: #ded5c2;
+  }
+
+  body {
+    font-family: "Iowan Old Style", Georgia, "Times New Roman", serif;
+    background: var(--bg);
+    color: var(--body);
+    padding: 20px 14px 60px;
+    line-height: 1.5;
+  }
+
+  .shell { max-width: 1080px; margin: 0 auto; }
+
+  header.masthead {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-bottom: 14px;
+    box-shadow: 0 6px 20px rgba(60,50,20,.07);
+  }
+  header.masthead h1 { font-size: 1.5rem; color: var(--ink); letter-spacing: -.01em; }
+  header.masthead .sub { color: var(--muted); font-size: .92rem; margin-top: 4px; }
+
+  /* ---- phase tracker ---- */
+  .tracker { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 18px; }
+  .tracker button {
+    font: inherit; font-size: .85rem;
+    background: var(--card); color: var(--body);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 7px 14px; cursor: pointer; display: flex; align-items: center; gap: 7px;
+  }
+  .tracker button:hover { border-color: var(--accent); }
+  .tracker button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .tracker button .dot {
+    width: 15px; height: 15px; border-radius: 50%; font-size: .62rem;
+    display: grid; place-items: center;
+    background: rgba(0,0,0,.09); color: var(--muted);
+  }
+  .tracker button.active .dot { background: rgba(255,255,255,.25); color: #fff; }
+  .tracker button.done .dot { background: var(--accent); color: #fff; }
+  .tracker button.active.done .dot { background: #fff; color: var(--accent); }
+
+  /* ---- panels ---- */
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    box-shadow: 0 6px 20px rgba(60,50,20,.07);
+  }
+  .panel[hidden] { display: none; }
+  h2 { font-size: 1.22rem; color: var(--ink); margin-bottom: 4px; }
+  h3 { font-size: 1rem; color: var(--ink); margin: 20px 0 8px; }
+  h4 { font-size: .92rem; color: var(--ink); margin: 16px 0 6px; }
+  .lede { color: var(--muted); font-size: .93rem; margin-bottom: 18px; }
+  p { margin-bottom: 12px; }
+  p.tight { margin-bottom: 6px; }
+  ul, ol { margin: 0 0 14px 20px; }
+  li { margin-bottom: 6px; }
+  strong { color: var(--ink); }
+  em.sci { font-style: italic; color: var(--muted); }
+
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 12px 16px; border-radius: 0 8px 8px 0;
+    font-size: .93rem; margin: 14px 0;
+  }
+  .callout.edge { border-left-color: var(--edge); background: var(--edge-soft); }
+  .callout.math { border-left-color: var(--math); background: var(--math-soft); }
+  .callout p:last-child { margin-bottom: 0; }
+
+  /* ---- layout ---- */
+  .split { display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap; }
+  .split > .left { flex: 1 1 380px; min-width: 0; }
+  .split > .right { flex: 1 1 260px; min-width: 0; }
+
+  /* ---- buttons ---- */
+  button.btn {
+    font: inherit; font-size: .88rem;
+    background: var(--accent); color: #fff;
+    border: 1px solid var(--accent); border-radius: 8px;
+    padding: 8px 16px; cursor: pointer;
+  }
+  button.btn:hover { filter: brightness(1.08); }
+  button.btn.ghost { background: transparent; color: var(--accent); }
+  button.btn.ghost:hover { background: var(--accent-soft); filter: none; }
+  button.btn.math { background: var(--math); border-color: var(--math); }
+  button.btn.math.ghost { background: transparent; color: var(--math); }
+  button.btn.math.ghost:hover { background: var(--math-soft); }
+  button.btn:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+  button.btn.small { font-size: .8rem; padding: 6px 12px; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
+
+  /* ---- the sorting tray ---- */
+  .tray-wrap { width: 100%; }
+  .tray {
+    width: 100%; height: auto; display: block;
+    border: 8px solid #6d6459; border-radius: 8px;
+    background: #f6f4ee;
+    box-shadow: 0 4px 14px rgba(40,30,10,.22), inset 0 0 0 2px #918777;
+    touch-action: manipulation;
+  }
+  .tray .critter { cursor: pointer; }
+  .tray .critter .hit { fill: transparent; }
+  .tray-cap {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: .8rem; color: var(--muted); margin-top: 7px; gap: 10px;
+  }
+  .tray-cap .station { color: var(--ink); font-weight: 600; }
+
+  /* ---- species palette ---- */
+  .palette { display: flex; flex-direction: column; gap: 5px; }
+  .palette button {
+    font: inherit; font-size: .84rem; text-align: left;
+    display: flex; align-items: center; gap: 9px;
+    background: #fff; color: var(--body);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 5px 10px; cursor: pointer;
+  }
+  .palette button:hover { border-color: var(--accent); }
+  .palette button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+  .palette button svg { flex: 0 0 34px; }
+  .palette button .nm { flex: 1 1 auto; }
+  .palette button .ct {
+    font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600;
+    min-width: 1.6em; text-align: right;
+  }
+  .palette button .ct.zero { color: #c3c0b4; font-weight: 400; }
+  .hint { font-size: .78rem; color: var(--muted); margin-top: 8px; }
+
+  /* ---- data / calc tables ---- */
+  table.data { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  table.data th {
+    text-align: left; font-size: .72rem; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--muted); font-weight: 600;
+    padding: 0 8px 7px; border-bottom: 1px solid var(--border);
+  }
+  table.data th.num, table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.data td { padding: 6px 8px; border-bottom: 1px solid #eee7d8; vertical-align: middle; }
+  table.data tr:last-child td { border-bottom: none; }
+  table.data tr.total td { border-top: 2px solid var(--border); font-weight: 600; color: var(--ink); }
+  table.data td.sp { color: var(--ink); white-space: nowrap; }
+  table.data td.sp svg { vertical-align: -7px; margin-right: 6px; }
+  table.data.compact td, table.data.compact th { padding-left: 6px; padding-right: 6px; font-size: .86rem; }
+  .scroller { overflow-x: auto; }
+
+  input.num {
+    font: inherit; font-size: .9rem; width: 74px; text-align: right;
+    padding: 4px 7px; border: 1px solid var(--border); border-radius: 6px;
+    background: #fff; color: var(--ink);
+  }
+  input.num:focus { outline: 2px solid var(--math); outline-offset: -1px; }
+  input.num.ok { border-color: var(--accent); background: var(--accent-soft); }
+  input.num.err { border-color: var(--warn); background: #fdf3f3; }
+  input.num:disabled { opacity: 1; color: var(--ink); }
+
+  /* ---- discrete / continuous sorting ---- */
+  .bins { display: flex; gap: 14px; flex-wrap: wrap; margin: 16px 0 18px; }
+  .bin {
+    flex: 1 1 280px; min-width: 0; background: #fff;
+    border: 1px solid var(--border); border-radius: 11px; padding: 14px 16px;
+  }
+  .bin h4 { margin: 0 0 3px; font-size: 1rem; }
+  .bin .bindef { font-size: .86rem; color: var(--muted); margin-bottom: 10px; }
+  .bin svg { width: 100%; height: auto; display: block; }
+  .bin .cap { font-size: .74rem; color: var(--muted); margin-top: 5px; line-height: 1.35; }
+  .dropped { margin-top: 11px; display: flex; flex-direction: column; gap: 4px; }
+  .dropped .it {
+    font-size: .84rem; padding: 5px 9px; border-radius: 7px;
+    background: var(--accent-soft); color: var(--ink); display: flex; gap: 7px; align-items: baseline;
+  }
+  .dropped .it.miss { background: var(--edge-soft); }
+  .dropped .it .mk { color: var(--accent); flex: 0 0 auto; }
+  .dropped .it.miss .mk { color: var(--edge); }
+
+  .sortdeck { display: flex; flex-direction: column; gap: 7px; }
+  .sortdeck .card {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: #fff;
+    border: 1px solid var(--border); border-radius: 9px; padding: 8px 12px;
+  }
+  .sortdeck .card .what { flex: 1 1 220px; font-size: .92rem; color: var(--ink); }
+  .sortdeck .card button {
+    font: inherit; font-size: .82rem; padding: 5px 12px; border-radius: 7px;
+    border: 1px solid var(--border); background: #fff; color: var(--body); cursor: pointer;
+  }
+  .sortdeck .card button:hover { border-color: var(--math); color: var(--math); }
+  .sortcount { font-size: .8rem; color: var(--muted); margin-top: 10px; }
+
+  /* ---- edge-case / question cards ---- */
+  .ec { border: 1px solid var(--border); border-radius: 11px; padding: 18px; margin-bottom: 14px; }
+  .ec .q { font-size: .93rem; margin-bottom: 12px; color: var(--ink); }
+  .ec .opts { display: flex; flex-direction: column; gap: 7px; }
+  .ec .opts button {
+    font: inherit; font-size: .89rem; text-align: left;
+    background: #fff; color: var(--body);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 9px 13px; cursor: pointer;
+  }
+  .ec .opts button:hover:not(:disabled) { border-color: var(--edge); }
+  .ec .opts button.right { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+  .ec .opts button.wrong { background: #fbeeee; border-color: #d9a3a3; color: #7a4a4a; }
+  .ec .opts button:disabled { cursor: default; }
+  .ec .exp {
+    margin-top: 12px; font-size: .89rem;
+    border-left: 3px solid var(--edge); background: var(--edge-soft);
+    padding: 11px 14px; border-radius: 0 8px 8px 0;
+  }
+  .ec .exp[hidden] { display: none; }
+
+  /* ---- guided steps ---- */
+  .stepcard {
+    border: 1px solid var(--border); border-radius: 11px;
+    padding: 16px 18px; margin-bottom: 10px; background: #fff;
+  }
+  .stepcard.locked { opacity: .55; }
+  .stepcard .stephead {
+    display: flex; align-items: center; gap: 9px;
+    font-size: .74rem; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--muted); margin-bottom: 9px;
+  }
+  .stepcard .stephead .n {
+    display: inline-grid; place-items: center; width: 20px; height: 20px;
+    border-radius: 50%; background: var(--math-soft); color: var(--math);
+    font-size: .72rem; letter-spacing: 0;
+  }
+  .stepcard.done .stephead .n { background: var(--accent); color: #fff; }
+  .stepfb {
+    margin-top: 11px; font-size: .88rem; color: var(--body);
+    border-left: 3px solid var(--accent); background: var(--accent-soft);
+    padding: 10px 13px; border-radius: 0 8px 8px 0;
+  }
+  .stepfb.off { border-left-color: var(--warn); background: #fbeeee; }
+  .stepfb[hidden] { display: none; }
+
+  /* ---- two-draw probability table ---- */
+  input.num.tiny { width: 44px; text-align: center; padding: 2px 3px; font-size: .86rem; }
+  td.eqn { white-space: nowrap; font-size: .84rem; color: var(--ink); }
+  td.eqn .op { color: var(--muted); margin: 0 3px; }
+  /* fractions inside a table cell need tighter gutters than the display ones */
+  td .frac .top { padding: 0 5px 2px; }
+  td .frac .bot { padding: 2px 5px 0; }
+  .frac.lit .top, .frac.lit .bot { color: var(--accent); }
+  .jarcaps { display: flex; gap: 30px; flex-wrap: wrap; align-items: center;
+    font-size: .92rem; color: var(--ink); margin: 4px 0 14px; }
+  .jarcaps .lbl2 { color: var(--muted); margin-right: 8px; }
+
+  /* ---- formula display ---- */
+  .formula {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    font-family: "Iowan Old Style", Georgia, serif; font-size: 1.15rem; color: var(--ink);
+    background: var(--math-soft); border: 1px solid #cdd3ea;
+    border-radius: 10px; padding: 16px 18px; margin: 14px 0;
+    flex-wrap: wrap;
+  }
+  .frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; }
+  .frac .top { padding: 0 8px 3px; }
+  .frac .bot { padding: 3px 8px 0; border-top: 1.5px solid var(--ink); }
+  .formula .lbl { font-size: .75rem; color: var(--math); text-transform: uppercase; letter-spacing: .07em; }
+  .sub { font-size: .72em; vertical-align: -.25em; }
+  .sup { font-size: .72em; vertical-align: .45em; }
+
+  /* ---- index result bars ---- */
+  .bars { display: flex; flex-direction: column; gap: 12px; margin: 16px 0; }
+  .barrow { display: flex; align-items: center; gap: 12px; font-size: .88rem; }
+  .barrow .bl { flex: 0 0 130px; color: var(--ink); }
+  .barrow .track { flex: 1 1 auto; height: 22px; background: #efeade; border-radius: 5px; overflow: hidden; border: 1px solid var(--border); }
+  .barrow .fill { display: block; height: 100%; background: var(--math); transition: width .5s ease; }
+  .barrow .fill.a { background: #b4622a; }
+  .barrow .fill.b { background: #2f6b4f; }
+  .barrow .bv { flex: 0 0 62px; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
+
+  /* ---- pair simulator ---- */
+  .pairbox { border: 1px solid var(--border); border-radius: 11px; padding: 16px; background: #fff; }
+  .pairstage {
+    display: flex; align-items: center; justify-content: center; gap: 18px;
+    min-height: 92px; background: #f6f4ee; border-radius: 8px; margin-bottom: 12px;
+    border: 1px dashed var(--border); padding: 10px; flex-wrap: wrap;
+  }
+  .pairstage .slot { text-align: center; font-size: .76rem; color: var(--muted); width: 86px; }
+  .pairstage .verdict { font-size: .95rem; font-weight: 600; width: 100%; text-align: center; }
+  .pairstage .verdict.same { color: var(--edge); }
+  .pairstage .verdict.diff { color: var(--accent); }
+  .readout { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 12px; font-size: .86rem; }
+  .readout b { color: var(--ink); display: block; font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .readout span { color: var(--muted); font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; }
+  .chartwrap { border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: #fff; margin-top: 14px; }
+  .chartwrap svg { width: 100%; display: block; }
+  .chart-title { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 8px; }
+
+  /* ---- summary ---- */
+  .scoregrid { display: flex; gap: 14px; flex-wrap: wrap; margin: 16px 0; }
+  .scorecard {
+    flex: 1 1 150px; border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px; text-align: center; background: #fff;
+  }
+  .scorecard .big { font-size: 1.6rem; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .scorecard .lbl { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+
+  .navrow { display: flex; justify-content: space-between; gap: 10px; margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border); }
+
+  @media (max-width: 620px) {
+    body { padding: 12px 8px 40px; }
+    .panel { padding: 16px; }
+    .split { gap: 16px; }
+    .barrow .bl { flex-basis: 92px; font-size: .8rem; }
+  }
+
+  /* ---- tray picker ---- */
+  .picker { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 4px; }
+  .picker button {
+    font: inherit; font-size: .88rem; min-width: 44px;
+    background: var(--card); color: var(--body);
+    border: 1px solid var(--border); border-radius: 9px;
+    padding: 7px 10px; cursor: pointer; position: relative;
+  }
+  .picker button:hover { border-color: var(--accent); }
+  .picker button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .picker button.done::after {
+    content: "✓"; position: absolute; top: -5px; right: -4px;
+    background: var(--accent); color: #fff; font-size: .6rem;
+    width: 14px; height: 14px; border-radius: 50%; display: grid; place-items: center;
+  }
+  .picker button.on.done::after { background: #fff; color: var(--accent); }
+  .pickernote { font-size: .8rem; color: var(--muted); margin-bottom: 16px; }
+
+  /* ---- the collapsible calculator ---- */
+  .calcbox { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: #fff; }
+  .calcbox > summary {
+    cursor: pointer; padding: 15px 18px; font-size: 1rem; color: var(--ink);
+    background: var(--math-soft); list-style: none; display: flex; align-items: baseline; gap: 9px;
+  }
+  .calcbox > summary::-webkit-details-marker { display: none; }
+  .calcbox > summary::before { content: "▸"; color: var(--math); }
+  .calcbox[open] > summary::before { content: "▾"; }
+  .calcbox > summary .sub2 { font-size: .82rem; color: var(--muted); font-weight: 400; }
+  .calcbody { padding: 18px; }
+
+  /* ---- where your tray sits ---- */
+  .strip { border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: #fff; margin-top: 16px; }
+  .strip svg { width: 100%; height: auto; display: block; }
+
+  .turnin { border: 2px solid var(--accent); border-radius: 12px; padding: 16px 18px; background: var(--accent-soft); margin-top: 18px; }
+  .turnin h4 { margin: 0 0 10px; }
+  .turnin table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  .turnin td { padding: 5px 0; }
+  .turnin td.k { color: var(--body); }
+  .turnin td.v { text-align: right; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header class="masthead">
+    <h1>Tray Sort: twelve samples off the same schoolyard</h1>
+    <div class="sub">Environmental Science · sort your tray, then work out its diversity index</div>
+  </header>
+
+  <nav class="picker" id="picker"></nav>
+  <div class="pickernote" id="pickerNote">Pick the tray number your teacher gave you. Your labelling is kept for every tray you open; the index boxes below reset when you switch.</div>
+
+  <section class="panel">
+    <h2 id="trayTitle">Tray 1</h2>
+    <div class="lede">Choose a species from the list, then click every animal in the tray that matches it. Click a labelled animal again to take the label off.</div>
+
+    <div class="split">
+      <div class="left">
+        <div class="tray-wrap">
+          <svg class="tray" id="trayA" viewBox="0 0 400 260" aria-label="Sorting tray"></svg>
+          <div class="tray-cap">
+            <span class="station" id="trayStation"></span>
+            <span id="trayMarked">0 labelled</span>
+          </div>
+        </div>
+        <div class="controls">
+          <button class="btn small" id="trayCheck">Check this tray</button>
+          <button class="btn small ghost" id="trayClear">Clear labels</button>
+        </div>
+        <div class="stepfb" id="trayFb" hidden></div>
+      </div>
+
+      <div class="right">
+        <h4 style="margin-top:0">Species list</h4>
+        <div class="palette" id="palette"></div>
+        <div class="hint">Silhouettes are drawn to the same scale as the tray. The tally beside each name is what <em>you</em> have labelled, not the answer.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" style="margin-top:14px">
+    <details class="calcbox" id="calcDetails">
+      <summary>Work out the diversity index for your tray <span class="sub2">— open this after the class has been through Simpson's</span></summary>
+      <div class="calcbody" id="calcBody"></div>
+    </details>
+  </section>
+
+</div>
+
+<script>
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    var t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/* ============================================================
+   SPECIES — silhouettes are drawn, not imaged, so the file stays
+   self-contained and the glyphs scale to any size.
+   Each glyph is drawn around the origin, nose to the left,
+   roughly 16-22 units long, then rotated as a whole.
+   ============================================================ */
+function legs(spec, col, w) {
+  return '<path d="' + spec + '" fill="none" stroke="' + col + '" stroke-width="' + w +
+         '" stroke-linecap="round" stroke-linejoin="round"/>';
+}
+
+const SPECIES = {
+  ant: {
+    name: 'Fire ant', sci: 'Solenopsis invicta', color: '#7d3226',
+    draw: legs('M-6.5,-1 L-11,-4.5 M-6.5,1 L-11,4.5', '#3a1d15', .8) +
+          legs('M-3,-1.4 L-7,-5.5 M-1.5,-1.4 L-1.5,-6 M0,-1.4 L3,-5.5' +
+               'M-3,1.4 L-7,5.5 M-1.5,1.4 L-1.5,6 M0,1.4 L3,5.5', '#3a1d15', .9) +
+          '<ellipse cx="-6" cy="0" rx="2.7" ry="2.3" fill="#7d3226"/>' +
+          '<ellipse cx="-1.5" cy="0" rx="2.2" ry="1.8" fill="#7d3226"/>' +
+          '<ellipse cx="4.2" cy="0" rx="4.2" ry="3.1" fill="#5e2318"/>'
+  },
+  cricket: {
+    name: 'Field cricket', sci: 'Gryllus sp.', color: '#6b5b3a',
+    draw: legs('M-8,-1 L-15,-6 M-8,1 L-15,6', '#4b4029', .7) +
+          legs('M-3,-2 L-6,-6 M0,-2 L-1,-6.5 M-3,2 L-6,6 M0,2 L-1,6.5', '#4b4029', .8) +
+          legs('M1,-2 L6,-7.5 L11.5,-5.5 M1,2 L6,7.5 L11.5,5.5', '#4b4029', 2.1) +
+          '<ellipse cx="2" cy="0" rx="6.6" ry="3.3" fill="#6b5b3a"/>' +
+          '<ellipse cx="-5.6" cy="0" rx="3.1" ry="2.9" fill="#584a2e"/>' +
+          '<path d="M-1,-2.4 L6,-1.4" stroke="#4b4029" stroke-width=".7" fill="none"/>'
+  },
+  spider: {
+    name: 'Wolf spider', sci: 'Hogna sp.', color: '#4a4038',
+    draw: legs('M-4,-1.5 L-11,-4 L-14.5,-1 M-3,-2 L-9,-7.5 L-12.5,-3.5' +
+               'M-2,-2.5 L-5.5,-9.5 L-9,-7 M-1,-2.5 L-1.5,-9.5 L-4.5,-8.5' +
+               'M-4,1.5 L-11,4 L-14.5,1 M-3,2 L-9,7.5 L-12.5,3.5' +
+               'M-2,2.5 L-5.5,9.5 L-9,7 M-1,2.5 L-1.5,9.5 L-4.5,8.5', '#3a322b', 1.1) +
+          '<ellipse cx="3.6" cy="0" rx="4.8" ry="4.1" fill="#4a4038"/>' +
+          '<ellipse cx="-2.6" cy="0" rx="3.3" ry="3" fill="#5a4e43"/>' +
+          '<circle cx="-4.6" cy="-1.1" r=".7" fill="#1c1815"/>' +
+          '<circle cx="-4.6" cy="1.1" r=".7" fill="#1c1815"/>'
+  },
+  beetle: {
+    name: 'Ground beetle', sci: 'Carabidae', color: '#2f3a44',
+    draw: legs('M-4,-2.5 L-8,-6.5 M-1,-3.5 L-1,-7.5 M3,-3.5 L5,-7' +
+               'M-4,2.5 L-8,6.5 M-1,3.5 L-1,7.5 M3,3.5 L5,7', '#1f272e', 1) +
+          legs('M-8.5,-1.4 L-12,-3.5 M-8.5,1.4 L-12,3.5', '#1f272e', .7) +
+          '<ellipse cx="-7.4" cy="0" rx="2.1" ry="1.9" fill="#232c33"/>' +
+          '<ellipse cx="-4" cy="0" rx="3" ry="3.2" fill="#2a343d"/>' +
+          '<ellipse cx="2.6" cy="0" rx="6" ry="4.2" fill="#2f3a44"/>' +
+          '<path d="M-3,0 L8.4,0" stroke="#161d23" stroke-width=".9"/>'
+  },
+  earwig: {
+    name: 'Earwig', sci: 'Labidura riparia', color: '#8a4a28',
+    draw: legs('M-4,-2 L-7,-6 M-1,-2.2 L-1,-6.5 M2,-2.2 L4,-6' +
+               'M-4,2 L-7,6 M-1,2.2 L-1,6.5 M2,2.2 L4,6', '#5c301a', .9) +
+          legs('M-8.5,-1 L-13,-3.5 M-8.5,1 L-13,3.5', '#5c301a', .7) +
+          '<ellipse cx="-7.5" cy="0" rx="2.4" ry="2.2" fill="#6d3a1f"/>' +
+          '<ellipse cx="0.5" cy="0" rx="7.6" ry="2.6" fill="#8a4a28"/>' +
+          legs('M2,-2 L2,2 M5,-2.2 L5,2.2', '#5c301a', .6) +
+          legs('M8,-1.7 Q13.5,-4.5 15.5,-.4 M8,1.7 Q13.5,4.5 15.5,.4', '#5c301a', 1.3)
+  },
+  pillbug: {
+    name: 'Pill bug', sci: 'Armadillidium', color: '#5a606b',
+    draw: legs('M-3,-3.6 L-5,-6.5 M0,-4 L0,-7 M3,-3.4 L4,-6.5' +
+               'M-3,3.6 L-5,6.5 M0,4 L0,7 M3,3.4 L4,6.5', '#3d434c', .9) +
+          '<ellipse cx="0" cy="0" rx="6.6" ry="4.6" fill="#5a606b"/>' +
+          '<path d="M-6.2,0 Q-6.6,-3 -5.6,-3.6 M-3,-4.3 Q-3.6,0 -3,4.3' +
+          'M0,-4.6 Q-.6,0 0,4.6 M3,-4.3 Q2.4,0 3,4.3" fill="none" stroke="#42474f" stroke-width=".9"/>' +
+          '<ellipse cx="-5.8" cy="0" rx="2" ry="2.6" fill="#4b515a"/>' +
+          legs('M-7.4,-1.4 L-9.6,-2.6 M-7.4,1.4 L-9.6,2.6', '#3d434c', .7)
+  },
+  millipede: {
+    name: 'Millipede', sci: 'Diplopoda', color: '#4f3a2a',
+    draw: (function () {
+      let s = '', pts = [];
+      for (let i = 0; i <= 16; i++) {
+        const t = i / 16, x = -11 + 22 * t, y = 3.4 * Math.sin(t * Math.PI * 1.55 + 0.3) - 1.2;
+        pts.push([x, y]);
+      }
+      for (let i = 1; i < 16; i++) {
+        const dx = pts[i + 1][0] - pts[i - 1][0], dy = pts[i + 1][1] - pts[i - 1][1];
+        const L = Math.hypot(dx, dy) || 1, nx = -dy / L * 3.4, ny = dx / L * 3.4;
+        s += 'M' + (pts[i][0] - nx * .3).toFixed(1) + ',' + (pts[i][1] - ny * .3).toFixed(1) +
+             ' L' + (pts[i][0] + nx).toFixed(1) + ',' + (pts[i][1] + ny).toFixed(1) +
+             ' M' + (pts[i][0] + nx * .3).toFixed(1) + ',' + (pts[i][1] + ny * .3).toFixed(1) +
+             ' L' + (pts[i][0] - nx).toFixed(1) + ',' + (pts[i][1] - ny).toFixed(1) + ' ';
+      }
+      let d = 'M' + pts[0][0] + ',' + pts[0][1].toFixed(1);
+      for (let i = 1; i < pts.length; i++) d += ' L' + pts[i][0].toFixed(1) + ',' + pts[i][1].toFixed(1);
+      return legs(s, '#3a2b1e', .8) +
+             '<path d="' + d + '" fill="none" stroke="#4f3a2a" stroke-width="3.6" stroke-linecap="round"/>' +
+             '<path d="' + d + '" fill="none" stroke="#6a5138" stroke-width="1.2" stroke-linecap="round" opacity=".55"/>';
+    })()
+  },
+  snail: {
+    name: 'Land snail', sci: 'Gastropoda', color: '#a5824f',
+    draw: '<path d="M-4,4.4 Q-11,5.4 -12,1.2 Q-12.6,4.6 -10,6.2 Q-4,7.4 4,6.2 Z" fill="#c9bda6" stroke="#a89b83" stroke-width=".6"/>' +
+          legs('M-11.6,0.4 L-14.5,-3.6 M-10.2,1 L-13.4,-1.4', '#a89b83', 1) +
+          '<circle cx="2" cy="-0.6" r="6.2" fill="#a5824f" stroke="#7d6039" stroke-width=".8"/>' +
+          '<path d="M4.6,3.4 A3.6,3.6 0 1 1 2.4,-3.2 A2,2 0 1 0 2.6,0.4" fill="none" stroke="#7d6039" stroke-width=".9"/>'
+  }
+};
+const SP_KEYS = Object.keys(SPECIES);
+
+function glyph(k, scale, extra) {
+  return '<g transform="scale(' + scale + ')"' + (extra || '') + '>' + SPECIES[k].draw + '</g>';
+}
+function chip(k, size) {
+  size = size || 34;
+  return '<svg width="' + size + '" height="' + (size * .62) + '" viewBox="-17 -10.5 34 21">' +
+         glyph(k, 1) + '</svg>';
+}
+
+
+function keysOf(st) {
+  return Object.keys(st.counts).sort(function (a, b) { return st.counts[b] - st.counts[a]; });
+}
+function totalOf(st) {
+  return keysOf(st).reduce(function (s, k) { return s + st.counts[k]; }, 0);
+}
+function pairSum(st) {  // the numerator of Simpson's: sum of n(n-1)
+  return keysOf(st).reduce(function (s, k) { return s + st.counts[k] * (st.counts[k] - 1); }, 0);
+}
+function simpsonD(st) {
+  const N = totalOf(st);
+  return pairSum(st) / (N * (N - 1));
+}
+function shannonH(st) {
+  const N = totalOf(st);
+  return -keysOf(st).reduce(function (s, k) {
+    const p = st.counts[k] / N;
+    return s + p * Math.log(p);
+  }, 0);
+}
+function richness(st) { return keysOf(st).length; }
+function evenness(st) { return shannonH(st) / Math.log(richness(st)); }
+
+function f2(x) { return x.toFixed(2); }
+function f3(x) { return x.toFixed(3); }
+
+const TW = 400, TH = 260, TM = 26;
+const LEAF_RX = 27, LEAF_RY = 13;
+
+function leafLocal(lf, x, y) {   // point in leaf-local coordinates
+  const a = -lf.rot * Math.PI / 180;
+  const dx = x - lf.x, dy = y - lf.y;
+  return [dx * Math.cos(a) - dy * Math.sin(a), dx * Math.sin(a) + dy * Math.cos(a)];
+}
+function inLeaf(lf, x, y, pad) {
+  const p = leafLocal(lf, x, y);
+  const rx = LEAF_RX + (pad || 0), ry = LEAF_RY + (pad || 0);
+  return (p[0] * p[0]) / (rx * rx) + (p[1] * p[1]) / (ry * ry) < 1;
+}
+function leafPlace(lf, u, v) {   // leaf-local -> tray coordinates
+  const a = lf.rot * Math.PI / 180;
+  return [lf.x + u * Math.cos(a) - v * Math.sin(a), lf.y + u * Math.sin(a) + v * Math.cos(a)];
+}
+
+function buildTray(st) {
+  const rnd = mulberry32(st.seed);
+
+  // three dead leaves, well separated, away from the tray rim
+  const leaves = [];
+  let guard = 0;
+  while (leaves.length < 3 && guard++ < 4000) {
+    const x = 78 + rnd() * (TW - 156), y = 56 + rnd() * (TH - 112);
+    let ok = true;
+    leaves.forEach(function (l) { if (Math.hypot(l.x - x, l.y - y) < 96) ok = false; });
+    if (ok) leaves.push({ x: x, y: y, rot: rnd() * 360 });
+  }
+
+  // one flat list, one animal per entry, shuffled so species aren't clustered
+  const list = [];
+  keysOf(st).forEach(function (k) { for (let i = 0; i < st.counts[k]; i++) list.push(k); });
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    const tmp = list[i]; list[i] = list[j]; list[j] = tmp;
+  }
+
+  const items = list.map(function (k) { return { sp: k, x: 0, y: 0, rot: 0, hidden: false }; });
+
+  // the two we mean to hide sit on a leaf's edge, half under it
+  const hide = (st.hide || []).slice();
+  hide.forEach(function (k, n) {
+    const it = items.find(function (o) { return o.sp === k && !o.placed; });
+    const lf = leaves[n % leaves.length];
+    if (!it || !lf) return;
+    const p = leafPlace(lf, (rnd() - 0.5) * 26, (rnd() < 0.5 ? 1 : -1) * 8);
+    it.x = Math.max(TM, Math.min(TW - TM, p[0]));
+    it.y = Math.max(TM, Math.min(TH - TM, p[1]));
+    it.rot = rnd() * 360; it.placed = true; it.hidden = true;
+  });
+
+  // everyone else: rejection sampling, clear of the leaves and of each other
+  let minD = 31;
+  guard = 0;
+  items.forEach(function (it) {
+    if (it.placed) return;
+    for (;;) {
+      guard++;
+      if (guard % 2500 === 0) minD *= 0.88;
+      const x = TM + rnd() * (TW - 2 * TM), y = TM + rnd() * (TH - 2 * TM);
+      let ok = true;
+      for (let i = 0; i < leaves.length && ok; i++) if (inLeaf(leaves[i], x, y, 9)) ok = false;
+      for (let i = 0; i < items.length && ok; i++) {
+        if (!items[i].placed) continue;
+        if (Math.hypot(items[i].x - x, items[i].y - y) < minD) ok = false;
+      }
+      if (ok || guard > 40000) { it.x = x; it.y = y; it.rot = rnd() * 360; it.placed = true; return; }
+    }
+  });
+
+  // grit: makes it read as a sample rather than a diagram
+  const grit = [];
+  for (let i = 0; i < 90; i++) {
+    grit.push([TM * .5 + rnd() * (TW - TM), TM * .5 + rnd() * (TH - TM), .6 + rnd() * 1.7, .1 + rnd() * .22]);
+  }
+  return { st: st, items: items, leaves: leaves, grit: grit };
+}
+
+
+function renderTray() {
+  const tray = TRAYS[ti], svg = document.getElementById('trayA');
+  let h = '<rect x="0" y="0" width="400" height="260" fill="#f6f4ee"/>';
+  tray.grit.forEach(function (g) {
+    h += '<circle cx="' + g[0].toFixed(1) + '" cy="' + g[1].toFixed(1) + '" r="' + g[2].toFixed(1) +
+         '" fill="#8b8272" opacity="' + g[3].toFixed(2) + '"/>';
+  });
+
+  h += '<g id="critterLayer">';
+  tray.items.forEach(function (it, i) {
+    const lab = assign[ti][i];
+    let ring = '';
+    if (lab) {
+      ring = '<circle r="12.5" fill="none" stroke="' + SPECIES[lab].color + '" stroke-width="2" opacity=".95"/>' +
+             '<circle cx="9" cy="-9" r="4.2" fill="' + SPECIES[lab].color + '"/>' +
+             '<path d="M7.2,-9 L8.6,-7.4 L11,-10.8" fill="none" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>';
+    }
+    if (trayRevealed[ti]) {
+      if (!lab) ring += '<circle r="15" fill="none" stroke="#b4622a" stroke-width="2" stroke-dasharray="4 3"/>';
+      else if (lab !== it.sp) ring += '<circle r="15.5" fill="none" stroke="#b03030" stroke-width="2"/>';
+    }
+    h += '<g class="critter" data-i="' + i + '" transform="translate(' + it.x.toFixed(1) + ',' + it.y.toFixed(1) + ')">' +
+         '<circle class="hit" r="13"/>' +
+         '<g transform="rotate(' + it.rot.toFixed(0) + ')">' + glyph(it.sp, 1) + '</g>' + ring + '</g>';
+  });
+  h += '</g>';
+
+  h += '<g pointer-events="none">';
+  tray.leaves.forEach(function (lf) {
+    h += '<g transform="translate(' + lf.x.toFixed(1) + ',' + lf.y.toFixed(1) + ') rotate(' + lf.rot.toFixed(0) + ')">' +
+         '<path d="M-27,0 Q-10,-13.5 27,0 Q-10,13.5 -27,0 Z" fill="#b09468" stroke="#967d55" stroke-width=".8"/>' +
+         '<path d="M-24,0 L24,0" stroke="#967d55" stroke-width=".7"/>' +
+         '<path d="M-14,-.2 L-8,-5 M-6,-.2 L0,-5.5 M2,-.2 L8,-4.6 M-14,.2 L-8,5 M-6,.2 L0,5.5 M2,.2 L8,4.6"' +
+         ' stroke="#a08a63" stroke-width=".5" fill="none"/></g>';
+  });
+  h += '</g>';
+
+  svg.innerHTML = h;
+  svg.querySelectorAll('.critter').forEach(function (g) {
+    g.onclick = function () { toggleCritter(+g.dataset.i); };
+  });
+
+  document.getElementById('trayStation').textContent = TRAYS[ti].st.label;
+  document.getElementById('trayMarked').textContent = Object.keys(assign[ti]).length + ' labelled';
+  document.getElementById('trayTitle').textContent = 'Tray ' + TRAYS[ti].st.id + ' · ' + TRAYS[ti].st.label;
+  renderPicker();
+}
+
+function toggleCritter(i) {
+  if (assign[ti][i] === sel) delete assign[ti][i];
+  else assign[ti][i] = sel;
+  renderTray(); renderPalette();
+}
+
+function renderPalette() {
+  const p = document.getElementById('palette');
+  const tally = {};
+  Object.keys(assign[ti]).forEach(function (i) {
+    const k = assign[ti][i]; tally[k] = (tally[k] || 0) + 1;
+  });
+  p.innerHTML = '';
+  SP_KEYS.forEach(function (k) {
+    const b = document.createElement('button');
+    b.className = (k === sel ? 'on' : '');
+    b.innerHTML = chip(k) + '<span class="nm">' + SPECIES[k].name + '</span>' +
+                  '<span class="ct' + (tally[k] ? '' : ' zero') + '">' + (tally[k] || 0) + '</span>';
+    b.onclick = function () { sel = k; renderPalette(); };
+    p.appendChild(b);
+  });
+}
+
+
+function countTable(st, extraCols) {
+  const ks = keysOf(st);
+  let h = '<table class="data compact"><thead><tr><th>Species</th><th class="num">Count</th>' +
+          (extraCols || '') + '</tr></thead><tbody>';
+  ks.forEach(function (k) {
+    h += '<tr><td class="sp">' + chip(k, 30) + SPECIES[k].name + '</td>' +
+         '<td class="num">' + st.counts[k] + '</td></tr>';
+  });
+  h += '<tr class="total"><td>' + ks.length + ' species &nbsp;<span style="color:var(--muted);font-weight:400">(S = ' +
+       ks.length + ')</span></td><td class="num">' + totalOf(st) + '</td></tr>';
+  return h + '</tbody></table>';
+}
+
+function setLock(id, locked) {
+  const el = document.getElementById(id);
+  el.classList.toggle('locked', locked);
+  el.querySelectorAll('input, button').forEach(function (n) { n.disabled = locked; });
+}
+function markDone(id) { document.getElementById(id).classList.add('done'); }
+function fb(id, html, bad) {
+  const e = document.getElementById(id);
+  e.className = 'stepfb' + (bad ? ' off' : '');
+  e.innerHTML = html; e.hidden = false;
+}
+function numOf(id) {
+  const v = document.getElementById(id).value.trim().replace(',', '.');
+  if (v === '') return NaN;
+  return Number(v);
+}
+
+function frac(a, b, cls) {
+  return '<span class="frac' + (cls ? ' ' + cls : '') + '"><span class="top">' + a +
+         '</span><span class="bot">' + b + '</span></span>';
+}
+function fracInput(id, den) {
+  return '<span class="frac"><span class="top"><input class="num tiny" id="' + id +
+         '" inputmode="numeric" placeholder="?"></span><span class="bot">' + den + '</span></span>';
+}
+function drawTable(st, pre, prefillFirst) {
+  const ks = keysOf(st), N = totalOf(st), DEN = N * (N - 1);
+  let h = '<table class="data compact"><thead><tr><th>Species</th>' +
+          '<th class="num">P(this bug first)</th><th class="num">P(this bug second)</th>' +
+          '<th class="num">P(both)</th></tr></thead><tbody>';
+  ks.forEach(function (k, i) {
+    const n = st.counts[k], given = (prefillFirst && i === 0);
+    h += '<tr><td class="sp">' + chip(k, 30) + SPECIES[k].name + '</td>' +
+         '<td class="num">' + frac(n, N) + '</td>' +
+         '<td class="num">' + (given ? frac(n - 1, N - 1, 'lit') : fracInput(pre + 'b' + i, N - 1)) + '</td>' +
+         '<td class="num eqn">' + frac(n, N) + '<span class="op">×</span>' +
+           '<span class="frac"><span class="top" id="' + pre + 'm' + i + '">' +
+           (given ? (n - 1) : '?') + '</span><span class="bot">' + (N - 1) + '</span></span>' +
+           '<span class="op">=</span>' +
+           (given ? frac(n * (n - 1), DEN, 'lit') : fracInput(pre + 'p' + i, DEN)) +
+         '</td></tr>';
+  });
+  h += '<tr class="total"><td colspan="3">Add the P(both) column</td><td class="num">' +
+       fracInput(pre + 'sum', DEN) + '</td></tr>';
+  return h + '</tbody></table>';
+}
+
+/* ============================================================
+   THE TWELVE TRAYS
+
+   Every tray is a different corner of the same schoolyard, and
+   they are built to spread across the whole range of Simpson's:
+   from a mown sports field that is almost pure fire ant (0.21)
+   to a shrub border where six species share the space (0.84).
+   Totals differ too, so no two students are doing the same
+   arithmetic and a borrowed answer does not fit.
+   ============================================================ */
+const TRAYSET = [
+  { id: 1,  label: 'Mowed lawn, full sun',        seed: 1201,
+    counts: { ant: 21, cricket: 3, beetle: 2, spider: 1 },                        hide: ['spider', 'cricket'] },
+  { id: 2,  label: 'Sidewalk edge, hot and dry',  seed: 2314,
+    counts: { ant: 16, earwig: 4, beetle: 2, spider: 1, cricket: 1 },             hide: ['spider', 'cricket'] },
+  { id: 3,  label: 'Sports field, mown weekly',   seed: 3427,
+    counts: { ant: 24, cricket: 2, spider: 1 },                                   hide: ['spider', 'cricket'] },
+  { id: 4,  label: 'Flower bed mulch',            seed: 4530,
+    counts: { pillbug: 9, ant: 6, beetle: 5, earwig: 4, millipede: 3, snail: 2 }, hide: ['snail', 'millipede'] },
+  { id: 5,  label: 'Under the oak, deep litter',  seed: 5643,
+    counts: { millipede: 8, pillbug: 7, beetle: 6, snail: 4, spider: 3, ant: 2 }, hide: ['ant', 'spider'] },
+  { id: 6,  label: 'Fence line, never mown',      seed: 6756,
+    counts: { cricket: 7, ant: 6, spider: 5, beetle: 4, earwig: 3 },              hide: ['earwig', 'beetle'] },
+  { id: 7,  label: 'Ditch bank, damp',            seed: 7869,
+    counts: { pillbug: 11, snail: 6, millipede: 4, beetle: 3, earwig: 2, cricket: 1 }, hide: ['cricket', 'earwig'] },
+  { id: 8,  label: 'Under a fallen log',          seed: 8972,
+    counts: { millipede: 10, pillbug: 8, beetle: 4, snail: 3, spider: 2, earwig: 2, ant: 1 }, hide: ['ant', 'earwig'] },
+  { id: 9,  label: 'Parking lot island',          seed: 9085,
+    counts: { ant: 18, beetle: 2, earwig: 2, spider: 1 },                         hide: ['spider', 'earwig'] },
+  { id: 10, label: 'Shrub border, part shade',    seed: 1198,
+    counts: { beetle: 7, ant: 6, pillbug: 5, cricket: 4, spider: 3, snail: 2 },   hide: ['snail', 'spider'] },
+  { id: 11, label: 'Playground edge, sandy',      seed: 2211,
+    counts: { ant: 14, cricket: 5, earwig: 3, spider: 2, beetle: 1 },             hide: ['beetle', 'spider'] },
+  { id: 12, label: 'Compost corner',              seed: 3324,
+    counts: { pillbug: 13, millipede: 6, snail: 5, beetle: 4, ant: 3, earwig: 1 }, hide: ['earwig', 'ant'] }
+];
+
+const TRAYS = TRAYSET.map(buildTray);
+let ti = 0;
+let sel = 'ant';
+const assign = TRAYS.map(function () { return {}; });
+const trayResult = TRAYS.map(function () { return null; });
+const trayRevealed = TRAYS.map(function () { return false; });
+let calcFor = -1;
+
+/* a tray number can be handed out as a link: tray-sort.html?tray=7 */
+(function () {
+  const m = /[?&]tray=(\d+)/.exec(window.location.search);
+  if (!m) return;
+  const n = parseInt(m[1], 10);
+  if (n >= 1 && n <= TRAYS.length) {
+    ti = n - 1;
+    document.getElementById('pickerNote').innerHTML =
+      'You were sent straight to <strong>tray ' + n + '</strong>. The other trays are still here if you want them.';
+  }
+})();
+
+function renderPicker() {
+  const p = document.getElementById('picker');
+  p.innerHTML = '';
+  TRAYS.forEach(function (t, i) {
+    const b = document.createElement('button');
+    b.className = (i === ti ? 'on ' : '') + (trayResult[i] ? 'done' : '');
+    b.textContent = t.st.id;
+    b.title = t.st.label;
+    b.onclick = function () { pickTray(i); };
+    p.appendChild(b);
+  });
+}
+function pickTray(i) {
+  ti = i; sel = 'ant';
+  renderTray(); renderPalette();
+  document.getElementById('trayFb').hidden = true;
+  syncCalc();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ============================================================
+   Checking a tray
+   ============================================================ */
+document.getElementById('trayClear').onclick = function () {
+  assign[ti] = {}; trayRevealed[ti] = false; renderTray(); renderPalette();
+  document.getElementById('trayFb').hidden = true;
+};
+document.getElementById('trayCheck').onclick = function () { checkTray(); };
+
+function myCounts() {          // what the student's labels claim is in the tray
+  const c = {};
+  Object.keys(assign[ti]).forEach(function (i) {
+    const k = assign[ti][i]; c[k] = (c[k] || 0) + 1;
+  });
+  return c;
+}
+
+function checkTray() {
+  const tray = TRAYS[ti];
+  let right = 0, wrong = 0, missed = 0;
+  tray.items.forEach(function (it, i) {
+    const lab = assign[ti][i];
+    if (!lab) missed++;
+    else if (lab === it.sp) right++;
+    else wrong++;
+  });
+  const total = tray.items.length;
+  const prev = trayResult[ti];
+  if (!prev || right > prev.right) trayResult[ti] = { right: right, wrong: wrong, missed: missed, total: total };
+  trayRevealed[ti] = true;
+
+  const yours = myCounts();
+  const lostSp = keysOf(tray.st).filter(function (k) { return !yours[k]; });
+
+  let msg = '<strong>' + right + ' of ' + total + ' correctly identified.</strong> ';
+  if (missed) msg += missed + ' left unlabelled (dashed circles). ';
+  if (wrong) msg += wrong + ' mislabelled (red circles). ';
+  if (!missed && !wrong) msg += 'Nothing missed, nothing mislabelled — that is a clean tray.';
+
+  if (missed) {
+    msg += '<br><br>Look at where the missed ones were sitting: under a leaf. Nothing about them is rare or ' +
+           'hard — they were just less <em>detectable</em>. Every survey ever done undercounts, and it ' +
+           'undercounts the things that hide.';
+  }
+  if (lostSp.length) {
+    const names = lostSp.map(function (k) { return SPECIES[k].name.toLowerCase(); });
+    msg += '<br><br><strong>And it cost you ' + (lostSp.length > 1 ? lostSp.length + ' whole species.' : 'a whole species.') +
+           '</strong> You recorded ' + Object.keys(yours).length + ' kinds of animal; the tray holds ' +
+           richness(tray.st) + '. Missing the ' +
+           (names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : names[0]) +
+           ' moves S itself, and every index built on top of it.';
+  } else if (missed) {
+    msg += '<br><br>Notice what it did <em>not</em> cost you: no species dropped off your list. Where every ' +
+           'species has several individuals, missing one animal is a rounding error.';
+  }
+
+  const f = document.getElementById('trayFb');
+  f.className = 'stepfb' + ((missed || wrong) ? ' off' : '');
+  f.innerHTML = msg; f.hidden = false;
+  renderTray();
+  renderPicker();
+  syncCalc();
+}
+
+/* ============================================================
+   The collapsible calculator — the student's own tray, worked
+   the same way the class worked the lawn tray together.
+   ============================================================ */
+const D = document.getElementById('calcDetails');
+D.addEventListener('toggle', function () { if (D.open) syncCalc(true); });
+
+function syncCalc(force) {
+  if (!D.open) { if (calcFor !== ti) calcFor = -1; return; }
+  if (calcFor === ti && !force) return;
+  calcFor = ti;
+  renderCalc();
+}
+
+function renderCalc() {
+  const st = TRAYS[ti].st, body = document.getElementById('calcBody');
+
+  if (!trayResult[ti]) {
+    body.innerHTML = '<p style="margin-bottom:0">Sort tray ' + st.id + ' first and press <strong>Check this tray</strong>. ' +
+      'The index is arithmetic on a species list, so there has to be a species list before there can be an index.</p>';
+    // leave calcFor unset so that checking the tray re-renders this straight into
+    // the real table, rather than leaving the student staring at the locked message
+    calcFor = -1;
+    return;
+  }
+
+  const N = totalOf(st), DEN = N * (N - 1);
+  body.innerHTML =
+    '<p>These are the <strong>official counts for tray ' + st.id + '</strong> — the ones the whole class works from, ' +
+    'so everybody\'s arithmetic lands in the same place regardless of how the sorting went.</p>' +
+    '<div class="scroller">' + countTable(st) + '</div>' +
+
+    '<div class="stepcard" id="m1" style="margin-top:18px">' +
+      '<div class="stephead"><span class="n">1</span> Two draws, species by species</div>' +
+      '<p class="tight">For each species: <strong>P(first)</strong> is how many of them over how many animals in the tray. ' +
+      '<strong>P(second)</strong> is one fewer of that species over one fewer animal. Multiply the two. ' +
+      'Every row lands over ' + DEN + ', so the column adds straight down.</p>' +
+      '<div class="scroller" style="margin-top:12px">' + drawTable(st, 'my', false) + '</div>' +
+      '<div class="controls"><button class="btn math small" id="myGo">Check the table</button></div>' +
+      '<div class="stepfb" id="myFb" hidden></div>' +
+    '</div>' +
+
+    '<div class="stepcard locked" id="m2">' +
+      '<div class="stephead"><span class="n">2</span> Turn the fraction into a probability</div>' +
+      '<div class="formula"><span>D&nbsp;=</span>' + frac(pairSum(st), DEN) + '<span>=&nbsp;?</span></div>' +
+      '<div class="controls"><span style="font-size:.95rem">D =</span>' +
+        '<input class="num" id="myD" inputmode="decimal" placeholder="0.00">' +
+        '<button class="btn math small" id="myDGo">Check</button>' +
+        '<span style="font-size:.82rem;color:var(--muted)">two decimal places</span></div>' +
+      '<div class="stepfb" id="myDFb" hidden></div>' +
+    '</div>' +
+
+    '<div class="stepcard locked" id="m3">' +
+      '<div class="stephead"><span class="n">3</span> Flip it</div>' +
+      '<div class="formula"><span class="lbl">Simpson\'s Diversity Index</span><span>1 − D&nbsp;=&nbsp;?</span></div>' +
+      '<div class="controls"><span style="font-size:.95rem">1 − D =</span>' +
+        '<input class="num" id="myI" inputmode="decimal" placeholder="0.00">' +
+        '<button class="btn math small" id="myIGo">Check</button></div>' +
+      '<div class="stepfb" id="myIFb" hidden></div>' +
+    '</div>' +
+
+    '<div id="myDone" hidden></div>';
+
+  setLock('m2', true); setLock('m3', true);
+  wireCalc(st);
+}
+
+function wireCalc(st) {
+  const N = totalOf(st), DEN = N * (N - 1), ks = keysOf(st);
+
+  ks.forEach(function (k, i) {
+    const b = document.getElementById('myb' + i);
+    if (!b) return;
+    b.oninput = function () {
+      document.getElementById('mym' + i).textContent = b.value.trim() === '' ? '?' : b.value.trim();
+    };
+  });
+
+  document.getElementById('myGo').onclick = function () {
+    let bad = 0, blank = 0;
+    function grade(el, want) {
+      if (!el) return;
+      const v = el.value.trim();
+      if (v === '') { blank++; el.className = 'num tiny'; return; }
+      if (Number(v) === want) el.className = 'num tiny ok';
+      else { el.className = 'num tiny err'; bad++; }
+    }
+    ks.forEach(function (k, i) {
+      const n = st.counts[k];
+      grade(document.getElementById('myb' + i), n - 1);
+      grade(document.getElementById('myp' + i), n * (n - 1));
+    });
+    grade(document.getElementById('mysum'), pairSum(st));
+
+    if (blank) { fb('myFb', 'Still ' + blank + ' box' + (blank > 1 ? 'es' : '') + ' empty.', true); return; }
+    if (bad) {
+      fb('myFb', 'Check the red boxes. Second draw: one fewer of that species, one fewer animal in the tray. ' +
+         'P(both): multiply the two numerators — every denominator is already ' + DEN + '.', true);
+      return;
+    }
+    const singles = ks.filter(function (k) { return st.counts[k] === 1; });
+    let msg = '<strong>' + pairSum(st) + ' out of ' + DEN + '.</strong>';
+    if (singles.length) {
+      msg += ' Notice the ' + SPECIES[singles[0]].name.toLowerCase() + ' row: <strong>0/' + (N - 1) + '</strong>. ' +
+             'Take the only one out and there is no second one left to draw, so it adds nothing at all.';
+    } else {
+      msg += ' No species in this tray is down to a single individual, so every row contributes something.';
+    }
+    fb('myFb', msg);
+    markDone('m1'); setLock('m2', false);
+  };
+
+  document.getElementById('myDGo').onclick = function () {
+    const want = simpsonD(st), got = numOf('myD'), el = document.getElementById('myD');
+    if (isNaN(got) || Math.abs(got - want) > 0.011) {
+      el.className = 'num err';
+      fb('myDFb', 'Not quite — divide ' + pairSum(st) + ' by ' + DEN + ' and round to two decimals.', true);
+      return;
+    }
+    el.className = 'num ok';
+    fb('myDFb', '<strong>D = ' + f2(want) + '.</strong> Grab two animals out of tray ' + st.id + ' and there is a ' +
+       Math.round(want * 100) + '% chance they are the same species.');
+    markDone('m2'); setLock('m3', false);
+  };
+
+  document.getElementById('myIGo').onclick = function () {
+    const want = 1 - simpsonD(st), got = numOf('myI'), el = document.getElementById('myI');
+    if (isNaN(got) || Math.abs(got - want) > 0.011) {
+      el.className = 'num err';
+      fb('myIFb', 'Subtract your D from 1.', true);
+      return;
+    }
+    el.className = 'num ok';
+    fb('myIFb', '<strong>1 − D = ' + f2(want) + ' for tray ' + st.id + '.</strong> About ' +
+       Math.round(want * 100) + ' times in 100, two animals grabbed at random are different species.');
+    markDone('m3');
+    showDone(st);
+  };
+}
+
+function showDone(st) {
+  const r = trayResult[ti], acc = Math.round(r.right / r.total * 100);
+  const mine = 1 - simpsonD(st);
+  const yc = myCounts(), yN = Object.keys(assign[ti]).length;
+  let sortLine = '';
+  if (yN > 1) {
+    const yours = 1 - simpsonD({ counts: yc });
+    const gap = Math.abs(yours - mine);
+    sortLine = '<p style="margin-top:14px;margin-bottom:0"><strong>What your own sort would have given: ' +
+      f2(yours) + '.</strong> ' +
+      (gap < 0.02 ? 'Near enough to identical — your slips were not the kind that move an index.'
+       : gap < 0.06 ? 'Off by ' + f2(gap) + '. Small, but it is the direction that matters: a missed animal almost ' +
+                      'always makes a place look less diverse than it is.'
+       : 'Off by ' + f2(gap) + ' — enough to change the story you would tell about this tray. Sorting is not the ' +
+         'boring part before the maths; it <em>is</em> the maths, one step earlier.') + '</p>';
+  }
+
+  document.getElementById('myDone').innerHTML =
+    '<div class="turnin"><h4>Tray ' + st.id + ' — copy this onto the class chart</h4><table>' +
+      '<tr><td class="k">Tray</td><td class="v">' + st.id + ' · ' + st.label + '</td></tr>' +
+      '<tr><td class="k">Species richness, S</td><td class="v">' + richness(st) + '</td></tr>' +
+      '<tr><td class="k">Animals counted, N</td><td class="v">' + totalOf(st) + '</td></tr>' +
+      '<tr><td class="k">Simpson\'s diversity, 1 − D</td><td class="v">' + f2(mine) + '</td></tr>' +
+      '<tr><td class="k">Shannon, H <span style="font-weight:400;color:var(--muted)">(for reference)</span></td>' +
+        '<td class="v">' + f2(shannonH(st)) + '</td></tr>' +
+      '<tr><td class="k">Your identification accuracy</td><td class="v">' + acc + '%</td></tr>' +
+    '</table>' + sortLine + '</div>' +
+    '<div class="strip"><div class="chart-title">All twelve trays, by Simpson\'s diversity — yours in blue</div>' +
+      stripChart(mine) +
+      '<p style="font-size:.86rem;margin:10px 0 0;color:var(--body)">The other eleven ticks are the rest of the class. ' +
+      'They are not labelled, so you cannot read anybody else\'s answer off this — but you can see that the ' +
+      'schoolyard is not one habitat, and that a mown field and a compost corner are not close.</p></div>';
+  document.getElementById('myDone').hidden = false;
+}
+
+function stripChart(mine) {
+  const W = 560, H = 92, L = 34, R = 26, y = 60;
+  const xAt = function (v) { return L + v * (W - L - R); };
+  let g = '<line x1="' + L + '" y1="' + y + '" x2="' + (W - R) + '" y2="' + y + '" stroke="#ded5c2" stroke-width="1.5"/>';
+  [0, .25, .5, .75, 1].forEach(function (v) {
+    g += '<line x1="' + xAt(v) + '" y1="' + y + '" x2="' + xAt(v) + '" y2="' + (y + 5) + '" stroke="#ded5c2"/>' +
+         '<text x="' + xAt(v) + '" y="' + (y + 19) + '" text-anchor="middle" font-size="11" fill="#7d8577">' +
+         v.toFixed(2) + '</text>';
+  });
+  TRAYSET.forEach(function (st) {
+    const v = 1 - simpsonD(st);
+    if (Math.abs(v - mine) < 1e-9) return;
+    g += '<line x1="' + xAt(v).toFixed(1) + '" y1="' + (y - 11) + '" x2="' + xAt(v).toFixed(1) + '" y2="' + y +
+         '" stroke="#b9b2a2" stroke-width="2.5"/>';
+  });
+  g += '<line x1="' + xAt(mine).toFixed(1) + '" y1="' + (y - 26) + '" x2="' + xAt(mine).toFixed(1) + '" y2="' + y +
+       '" stroke="#3c4a86" stroke-width="3"/>' +
+       '<text x="' + xAt(mine).toFixed(1) + '" y="' + (y - 32) + '" text-anchor="middle" font-size="12" fill="#3c4a86">' +
+       f2(mine) + '</text>' +
+       '<text x="' + L + '" y="18" font-size="10.5" fill="#7d8577">one species owns it</text>' +
+       '<text x="' + (W - R) + '" y="18" text-anchor="end" font-size="10.5" fill="#7d8577">everything shares</text>';
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="aspect-ratio:' + W + '/' + H + '">' + g + '</svg>';
+}
+
+/* ---- boot ---- */
+renderTray();
+renderPalette();
+renderPicker();
+
+</script>
+</body>
+</html>
