@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multiplying Fractions</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #1f2433;
+    --muted: #5d6680;
+    --line: #dde2ee;
+    --paper: #ffffff;
+    --bg: #eef2fa;
+    --accent: #3b4bb8;
+    --accent-dk: #2c3a99;
+    --top: #2466d1;
+    --top-soft: #e4eeff;
+    --bot: #cf6a17;
+    --bot-soft: #fff0e2;
+    --both: #7a3fb8;
+    --both-soft: #f1e8fb;
+    --good: #1b7a3d;
+    --good-soft: #e7f6ec;
+    --bad: #b3261e;
+    --bad-soft: #fdecea;
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  .widget {
+    max-width: 1100px;
+    margin: 0 auto;
+    background: var(--paper);
+    border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(30, 40, 90, .12);
+    overflow: hidden;
+  }
+
+  /* ── Header ──────────────────────────────────────────── */
+  header {
+    background: linear-gradient(135deg, var(--accent-dk) 0%, #5a6bd6 100%);
+    color: #fff;
+    padding: 22px 32px 0;
+  }
+  .eyebrow {
+    font-size: .75rem; font-weight: 600; letter-spacing: .15em;
+    text-transform: uppercase; opacity: .75; margin-bottom: 4px;
+  }
+  header h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 16px; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tab {
+    font: inherit; font-size: .95rem; font-weight: 600;
+    border: none; cursor: pointer;
+    padding: 10px 16px; border-radius: 10px 10px 0 0;
+    background: rgba(255,255,255,.14); color: #fff;
+  }
+  .tab:hover:not(:disabled) { background: rgba(255,255,255,.24); }
+  .tab.on { background: var(--paper); color: var(--accent-dk); }
+  .tab:disabled { opacity: .45; cursor: not-allowed; }
+
+  /* ── Layout ──────────────────────────────────────────── */
+  .workspace { display: grid; grid-template-columns: 270px 1fr; min-height: 560px; }
+  aside {
+    background: #f6f8fd; border-right: 2px solid var(--line);
+    padding: 24px 22px;
+  }
+  .side-label {
+    font-size: .7rem; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+  }
+  .side-prob {
+    background: #fff; border-radius: 12px; padding: 16px 10px;
+    box-shadow: inset 0 0 0 2px var(--line);
+    text-align: center; font-size: 1.7rem; margin-bottom: 24px;
+  }
+  .proc { list-style: none; counter-reset: p; display: flex; flex-direction: column; gap: 6px; }
+  .proc li {
+    counter-increment: p; display: flex; gap: 10px; align-items: flex-start;
+    font-size: .92rem; line-height: 1.35; color: #9aa2b8; padding: 6px 8px; border-radius: 8px;
+  }
+  .proc li::before {
+    content: counter(p); flex: 0 0 22px; height: 22px; border-radius: 11px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: .75rem; font-weight: 700; background: #e3e7f2; color: #8a93ab;
+  }
+  .proc li.done { color: var(--ink); }
+  .proc li.done::before { content: '✓'; background: var(--good); color: #fff; }
+  .proc li.cur { color: var(--accent-dk); font-weight: 700; background: #e7eafb; }
+  .proc li.cur::before { background: var(--accent); color: #fff; }
+
+  main { padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 14px; }
+
+  .intro {
+    background: #f6f8fd; border-left: 4px solid var(--accent);
+    padding: 14px 18px; border-radius: 0 10px 10px 0; line-height: 1.55; font-size: 1rem;
+  }
+
+  /* ── Step cards ──────────────────────────────────────── */
+  .card { border: 2px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .card-h { display: flex; align-items: center; gap: 12px; padding: 12px 18px; background: #f6f8fd; }
+  .card-h .n {
+    flex: 0 0 28px; height: 28px; border-radius: 14px; font-weight: 700; font-size: .85rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--accent); color: #fff;
+  }
+  .card-h h3 { font-size: 1.08rem; }
+  .card-b { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 14px; }
+  .card.active { border-color: var(--accent); box-shadow: 0 4px 18px rgba(59,75,184,.14); }
+  .card.done .card-h { background: var(--good-soft); }
+  .card.done .card-h .n { background: var(--good); }
+  .card.done .card-b { padding: 12px 20px 14px; font-size: 1.05rem; }
+
+  .prompt { font-size: 1.05rem; line-height: 1.55; }
+  .show { font-size: 2rem; text-align: center; padding: 6px 0; }
+
+  /* ── Math bits ───────────────────────────────────────── */
+  .frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 .12em; }
+  .frac > .fn { border-bottom: .09em solid currentColor; padding: 0 .25em .04em; }
+  .frac > .fd { padding: .04em .25em 0; }
+  .op { margin: 0 .3em; color: var(--muted); vertical-align: middle; }
+  .hl-top { background: var(--top-soft); color: var(--top); border-radius: 6px; padding: 0 .15em; }
+  .hl-bot { background: var(--bot-soft); color: var(--bot); border-radius: 6px; padding: 0 .15em; }
+  .t-top { color: var(--top); font-weight: 700; }
+  .t-bot { color: var(--bot); font-weight: 700; }
+  .t-both { color: var(--both); font-weight: 700; }
+
+  .eq { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 1.5rem; }
+  .num-in {
+    font: inherit; font-weight: 700; text-align: center;
+    width: 3.4em; padding: 4px 6px; border-radius: 8px;
+    border: 2px solid #b9c1d6; background: #fff; color: var(--ink);
+  }
+  .num-in:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,75,184,.18); }
+  .num-in.sm { width: 2.8em; font-size: 1.1rem; }
+
+  .btn {
+    font: inherit; font-size: 1rem; font-weight: 700; cursor: pointer;
+    padding: 9px 18px; border-radius: 10px; border: none;
+    background: var(--accent); color: #fff;
+  }
+  .btn:hover:not(:disabled) { background: var(--accent-dk); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn.ghost { background: #fff; color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+  .btn.ghost:hover:not(:disabled) { background: #eef0fc; }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .fb { font-size: 1rem; line-height: 1.5; min-height: 0; }
+  .fb:empty { display: none; }
+  .fb.bad { background: var(--bad-soft); color: var(--bad); padding: 10px 14px; border-radius: 10px; }
+  .fb.good { background: var(--good-soft); color: var(--good); padding: 10px 14px; border-radius: 10px; }
+  .fb.info { background: #eef0fc; color: var(--accent-dk); padding: 10px 14px; border-radius: 10px; }
+
+  /* ── Factor trees ────────────────────────────────────── */
+  .ftree { --c: var(--top); --cs: var(--top-soft); display: flex; flex-direction: column; gap: 10px; }
+  .ftree.bot { --c: var(--bot); --cs: var(--bot-soft); }
+  .ftree-title { font-weight: 700; color: var(--c); font-size: .95rem; }
+  .tree { display: flex; justify-content: center; overflow-x: auto; padding: 6px 4px; }
+  .tnode { display: flex; flex-direction: column; align-items: center; }
+  .tval {
+    min-width: 50px; height: 50px; padding: 0 10px; border-radius: 25px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 1.3rem; background: #fff;
+    border: 2px solid #c6cde0; color: var(--ink);
+  }
+  .tval.open { border-style: dashed; border-color: var(--c); cursor: pointer; }
+  .tval.cur { background: var(--cs); border-style: solid; box-shadow: 0 0 0 4px rgba(59,75,184,.15); }
+  .tval.prime { border-color: var(--c); color: var(--c); background: var(--cs); box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--c); }
+  .tbranch { display: flex; gap: 30px; color: #98a1b8; font-size: 1.4rem; line-height: 1.1; }
+  .tkids { display: flex; gap: 22px; align-items: flex-start; }
+  .tctl {
+    display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap;
+    background: #f4f6fb; padding: 10px 12px; border-radius: 12px; font-size: 1.1rem; font-weight: 600;
+  }
+  .tctl .or { color: var(--muted); font-weight: 400; font-size: .95rem; }
+  .tctl .btn { font-size: .92rem; padding: 7px 12px; }
+  .tctl.done { background: var(--cs); color: var(--c); font-size: 1.25rem; }
+  .tree-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .tree-grid .ftree { border: 2px solid var(--line); border-radius: 12px; padding: 12px; }
+  .row-label { grid-column: 1 / -1; font-size: .75rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; margin-bottom: -8px; }
+
+  /* ── Chips & Venn ────────────────────────────────────── */
+  .chip {
+    min-width: 42px; height: 42px; padding: 0 10px; border-radius: 21px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font: inherit; font-weight: 700; font-size: 1.15rem;
+    border: 2px solid; background: #fff; cursor: pointer; user-select: none;
+    transition: transform .12s;
+  }
+  .chip.top { color: var(--top); border-color: var(--top); }
+  .chip.bot { color: var(--bot); border-color: var(--bot); }
+  .chip.top.sel { background: var(--top); color: #fff; transform: scale(1.12); }
+  .chip.bot.sel { background: var(--bot); color: #fff; transform: scale(1.12); }
+  .chip.pair { color: var(--both); border-color: var(--both); background: linear-gradient(90deg, var(--top-soft) 50%, var(--bot-soft) 50%); }
+  .chip.half { border-style: dashed; }
+  .chip.static { cursor: default; }
+  .chip.x { position: relative; opacity: .5; cursor: pointer; }
+  .chip.x::after {
+    content: ''; position: absolute; left: 4px; right: 4px; top: 50%; height: 3px;
+    background: var(--bad); transform: rotate(-35deg); border-radius: 2px;
+  }
+
+  .tray { display: flex; flex-direction: column; gap: 10px; }
+  .tray-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 46px; }
+  .tray-row .lbl { font-weight: 700; width: 150px; font-size: .95rem; }
+  .tray-row .empty { color: #a5adc2; font-style: italic; font-size: .92rem; }
+
+  .venn-wrap { max-width: 560px; width: 100%; margin: 8px auto 4px; }
+  .venn-wrap.small { max-width: 420px; }
+  .vlabels { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; margin-bottom: 6px; }
+  .venn { position: relative; height: 250px; width: 100%; }
+  .venn.small { height: 180px; }
+  .venn.small .chip { min-width: 32px; height: 32px; font-size: .95rem; padding: 0 6px; }
+  .circle { position: absolute; top: 0; bottom: 0; width: 62%; border-radius: 50%; border: 3px solid; pointer-events: none; }
+  .circle.l { left: 0; border-color: var(--top); background: rgba(36,102,209,.07); }
+  .circle.r { right: 0; border-color: var(--bot); background: rgba(207,106,23,.07); }
+  .zone {
+    position: absolute; top: 14%; bottom: 14%;
+    display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 6px;
+    border-radius: 14px; padding: 4px;
+  }
+  .zone.l { left: 5%; width: 31%; } .zone.m { left: 39%; width: 22%; } .zone.r { right: 5%; width: 31%; }
+  .armed .zone { cursor: pointer; outline: 2px dashed #c5cbe0; outline-offset: -2px; }
+  .armed .zone:hover { background: rgba(59,75,184,.08); }
+  .vlabel { font-size: .82rem; font-weight: 700; line-height: 1.2; }
+  .vlabel.l { text-align: left; color: var(--top); } .vlabel.m { text-align: center; color: var(--both); } .vlabel.r { text-align: right; color: var(--bot); }
+
+  /* ── Part 3 ──────────────────────────────────────────── */
+  .splash { text-align: center; padding: 18px 0 6px; }
+  .splash .big { font-size: 3.4rem; font-weight: 900; line-height: 1.05; letter-spacing: -.01em; color: var(--accent-dk); }
+  .splash .sub { font-size: 1.15rem; color: var(--muted); margin-top: 14px; line-height: 1.5; }
+  .splash .btn-row { justify-content: center; margin-top: 18px; }
+  .order-list { list-style: none; max-width: 420px; margin: 18px auto 0; display: flex; flex-direction: column; gap: 6px; text-align: left; }
+  .order-list li {
+    display: flex; align-items: center; gap: 12px; padding: 9px 14px; border-radius: 10px;
+    background: #f6f8fd; border: 2px solid var(--line); font-size: 1.05rem; font-weight: 600;
+    position: relative;
+  }
+  .order-list li .k {
+    flex: 0 0 26px; height: 26px; border-radius: 13px; display: inline-flex; align-items: center; justify-content: center;
+    font-size: .8rem; font-weight: 700; background: #e3e7f2; color: var(--muted);
+  }
+  .order-list li.mult { border-color: #c9cfe0; }
+  .order-list li.pf { border-color: var(--both); background: var(--both-soft); color: var(--both); z-index: 1; }
+  .order-list li.pf .k { background: var(--both); color: #fff; }
+  .order-list li.moved { box-shadow: 0 4px 14px rgba(122,63,184,.22); }
+  .order-list li.gone { opacity: 0; transform: scale(.96); transition: opacity .5s, transform .5s; }
+  .order-list li.qmark { justify-content: flex-start; border: 2px dashed var(--accent); background: #fff; color: var(--accent-dk); }
+  .order-list li.qmark .lbl { font-size: 1.6rem; font-weight: 900; line-height: 1; }
+  .order-list li.qmark .k { background: var(--accent); color: #fff; }
+  .order-list li small { display: block; font-size: .82rem; font-weight: 500; opacity: .85; margin-top: 2px; }
+  .lists-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  .list-h { font-size: .75rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .lists-2 .order-list { margin-top: 8px; max-width: none; }
+  .lists-2 .order-list li { font-size: .93rem; padding: 8px 10px; gap: 10px; }
+  .order-list li.used { opacity: .45; }
+  .mc { max-width: 460px; margin: 18px auto 0; text-align: left; }
+  .mc-q { font-size: 1.15rem; font-weight: 700; margin-bottom: 10px; text-align: center; }
+  .mc-opts { display: flex; flex-direction: column; gap: 8px; }
+  .mc-opt {
+    font: inherit; font-size: 1.02rem; font-weight: 600; text-align: left; cursor: pointer;
+    padding: 11px 14px; border-radius: 10px; border: 2px solid var(--line); background: #fff; color: var(--ink);
+  }
+  .mc-opt:hover:not(:disabled) { border-color: var(--accent); background: #eef0fc; }
+  .mc-opt:disabled { cursor: default; }
+  .mc-opt.wrong { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); opacity: .7; text-decoration: line-through; }
+  .mc-opt.right { border-color: var(--good); background: var(--good-soft); color: var(--good); }
+  .order-list li.pickable { cursor: pointer; }
+  .order-list li.pickable:hover { border-color: var(--both); }
+  .order-list li.picked { border: 2px dashed var(--both); background: var(--both-soft); color: var(--both); }
+  .order-list li.picked .k { background: var(--both); color: #fff; }
+  .order-list li.hit { border-color: var(--both); background: var(--both-soft); color: var(--both); transition: background .3s, border-color .3s; }
+  .order-list li.left { border-color: var(--accent); background: #e7eafb; color: var(--accent-dk); }
+  .order-list li.multnew { border-color: var(--accent); background: #e7eafb; color: var(--accent-dk); z-index: 2; box-shadow: 0 4px 14px rgba(59,75,184,.22); }
+  .order-list li.multnew .k { background: var(--accent); color: #fff; }
+  .order-list li .to { margin-left: auto; font-size: .8rem; font-weight: 700; color: var(--both); white-space: nowrap; }
+  .pop { animation: pop .45s ease-out; }
+  @keyframes pop { 0% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.06); } 100% { transform: scale(1); opacity: 1; } }
+
+  .big-frac { font-size: 1.7rem; text-align: center; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 6px; }
+  .big-frac .frac > .fn, .big-frac .frac > .fd { display: flex; align-items: center; gap: 6px; padding: 8px 10px; }
+  .paren { font-size: 1.1em; color: var(--muted); font-weight: 300; }
+  .times { color: var(--muted); }
+
+  /* ── Finish ──────────────────────────────────────────── */
+  .finish { border: 2px solid var(--good); background: var(--good-soft); border-radius: 14px; padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; }
+  .finish h3 { color: var(--good); font-size: 1.3rem; }
+  .finish .answer { font-size: 2.2rem; text-align: center; }
+  .finish p { line-height: 1.55; font-size: 1.02rem; }
+
+  @media (max-width: 480px) {
+    .lists-2 { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 820px) {
+    body { padding: 0; }
+    .widget { border-radius: 0; }
+    header { padding: 18px 16px 0; }
+    header h1 { font-size: 1.45rem; }
+    .tab { font-size: .82rem; padding: 8px 10px; }
+    .workspace { grid-template-columns: 1fr; }
+    aside { border-right: none; border-bottom: 2px solid var(--line); padding: 16px; }
+    .side-prob { margin-bottom: 12px; }
+    main { padding: 16px; }
+    .tree-grid { grid-template-columns: 1fr; }
+    .splash .big { font-size: 2.4rem; }
+    .tray-row .lbl { width: 100%; }
+    .venn { height: 210px; }
+    .chip { min-width: 36px; height: 36px; font-size: 1rem; }
+  }
+</style>
+</head>
+<body>
+<div class="widget">
+  <header>
+    <div class="eyebrow">Fractions</div>
+    <h1>Multiplying Fractions</h1>
+    <nav class="tabs" id="tabs"></nav>
+  </header>
+  <div class="workspace">
+    <aside>
+      <div class="side-label">Problem</div>
+      <div class="side-prob" id="sideProb"></div>
+      <div class="side-label">Procedure</div>
+      <ol class="proc" id="proc"></ol>
+    </aside>
+    <main id="main"></main>
+  </div>
+</div>
+
+<script>
+/* ── Content ──────────────────────────────────────────── */
+const PARTS = {
+  1: { tab: 'Part 1 · Primes',
+       intro: 'Here is the procedure for multiplying fractions. <b>Multiply across the top. Multiply across the bottom.</b> Then check whether the answer simplifies: find the <b>GCF</b> (greatest common factor) of the top and bottom using prime factorization and a Venn diagram. Do every step — even when you think you already know the answer.' },
+  2: { tab: 'Part 2 · It simplifies',
+       intro: 'Same procedure, new numbers. This time the top and the bottom <b>do</b> share some factors, so the answer will simplify.' },
+  3: { tab: 'Part 3 · Change the order?',
+       intro: '' },
+};
+// Each student gets a random problem from these pools, so a class isn't all
+// working the same one. Each entry is [a, b, c, d] for a/b × c/d.
+// Part 1: four different primes, so the GCF is 1.
+const PART1_BANK = [
+  [2, 3, 5, 7], [2, 5, 3, 7], [2, 3, 5, 11], [3, 5, 7, 11], [2, 7, 3, 11],
+];
+// Part 2: GCF > 1, and after cancelling (Part 3 reuses the Part 2 problem)
+// both the top and the bottom still have at least two factors to multiply.
+const PART2_BANK = [
+  [4, 9, 5, 6], [3, 5, 4, 9], [5, 6, 8, 9], [2, 9, 6, 7], [4, 7, 5, 6],
+];
+
+/* ── State ────────────────────────────────────────────── */
+const S = { part: 1, unlocked: 1, prob: null, lastPart2: null, seenSplash: false, steps: [], idx: 0, data: {} };
+
+/* ── Helpers ──────────────────────────────────────────── */
+function h(tag, cls, html) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html != null) e.innerHTML = html;
+  return e;
+}
+const frac = (n, d, cls = '') => `<span class="frac ${cls}"><span class="fn">${n}</span><span class="fd">${d}</span></span>`;
+const X = ' <span class="times">×</span> ';
+function numInput(cls = '') {
+  const i = h('input', 'num-in ' + cls);
+  i.type = 'text'; i.inputMode = 'numeric'; i.autocomplete = 'off';
+  return i;
+}
+function readInt(i) { const v = i.value.trim(); return /^\d+$/.test(v) ? parseInt(v, 10) : NaN; }
+function say(fb, msg, kind = 'bad') { fb.className = 'fb ' + kind; fb.innerHTML = msg; }
+function clear(fb) { fb.className = 'fb'; fb.innerHTML = ''; }
+// Enter moves to the next empty box, or runs the check when all are filled.
+function wireEnter(inputs, fn) {
+  inputs.forEach(i => i.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const empty = inputs.find(x => !x.value.trim());
+    empty ? empty.focus() : fn();
+  }));
+}
+function isPrime(n) { if (n < 2) return false; for (let k = 2; k * k <= n; k++) if (n % k === 0) return false; return true; }
+function smallestFactor(n) { for (let k = 2; k * k <= n; k++) if (n % k === 0) return k; return n; }
+const gcd = (a, b) => b ? gcd(b, a % b) : a;
+const prod = arr => arr.reduce((a, b) => a * b, 1);
+const shuffle = arr => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const sameProb = (p, q) => p && q && p.a === q.a && p.b === q.b && p.c === q.c && p.d === q.d;
+
+function probHTML(p, hl) {
+  const t = v => hl === 'top' ? `<span class="hl-top">${v}</span>` : v;
+  const b = v => hl === 'bot' ? `<span class="hl-bot">${v}</span>` : v;
+  return `${frac(t(p.a), b(p.b))}<span class="op">×</span>${frac(t(p.c), b(p.d))}`;
+}
+
+/* ── Problem generation ───────────────────────────────── */
+// Random problem from a pool, never the same one twice in a row.
+function pickFrom(bank) {
+  let p;
+  do {
+    const [a, b, c, d] = bank[Math.floor(Math.random() * bank.length)];
+    p = { a, b, c, d };
+  } while (sameProb(p, S.prob));
+  return p;
+}
+const genPart1 = () => pickFrom(PART1_BANK);
+const genPart2 = () => pickFrom(PART2_BANK);
+
+/* ── Factor tree component ────────────────────────────── */
+function factorTree(value, side, label, onComplete) {
+  const root = { v: value, kids: null, prime: false };
+  let cur = root, finished = false, inA, inB;
+  const box = h('div', 'ftree ' + side);
+  if (label) box.append(h('div', 'ftree-title', label));
+  const treeEl = h('div', 'tree'), ctl = h('div', 'tctl'), fb = h('div', 'fb');
+  box.append(treeEl, ctl, fb);
+
+  const leaves = (n, out = []) => { if (n.kids) { leaves(n.kids[0], out); leaves(n.kids[1], out); } else out.push(n); return out; };
+  const primes = () => leaves(root).map(n => n.v).sort((a, b) => a - b);
+
+  function nodeEl(n) {
+    const w = h('div', 'tnode');
+    const open = !n.kids && !n.prime;
+    const c = h('div', 'tval' + (n.prime ? ' prime' : '') + (open ? ' open' : '') + (n === cur && !finished ? ' cur' : ''), n.v);
+    if (open) c.onclick = () => { cur = n; clear(fb); draw(); focus(); };
+    w.append(c);
+    if (n.kids) {
+      w.append(h('div', 'tbranch', '<span>╱</span><span>╲</span>'));
+      const r = h('div', 'tkids');
+      r.append(nodeEl(n.kids[0]), nodeEl(n.kids[1]));
+      w.append(r);
+    }
+    return w;
+  }
+  function draw() {
+    treeEl.innerHTML = '';
+    treeEl.append(nodeEl(root));
+    ctl.innerHTML = '';
+    if (finished) {
+      ctl.className = 'tctl done';
+      ctl.textContent = `${value} = ${primes().join(' × ')}`;
+      return;
+    }
+    ctl.className = 'tctl';
+    inA = numInput('sm'); inB = numInput('sm');
+    const split = h('button', 'btn', 'Split');
+    const pr = h('button', 'btn ghost', `${cur.v} is prime`);
+    ctl.append(h('span', null, `${cur.v} =`), inA, h('span', null, '×'), inB, split, h('span', 'or', 'or'), pr);
+    split.onclick = doSplit;
+    pr.onclick = doPrime;
+    wireEnter([inA, inB], doSplit);
+  }
+  function doSplit() {
+    const a = readInt(inA), b = readInt(inB), n = cur.v;
+    if (isNaN(a) || isNaN(b)) return say(fb, 'Fill in both boxes.');
+    if (a * b !== n) return say(fb, `${a} × ${b} = ${a * b}, not ${n}. Find two numbers that multiply to ${n}.`);
+    if (a === 1 || b === 1) {
+      return say(fb, isPrime(n)
+        ? `Using 1 doesn't break ${n} into smaller pieces. If the only way to split ${n} uses a 1, what kind of number is it?`
+        : `Using 1 doesn't break ${n} apart. Find two factors that are both bigger than 1.`);
+    }
+    cur.kids = [{ v: a, kids: null, prime: false }, { v: b, kids: null, prime: false }];
+    clear(fb);
+    next();
+  }
+  function doPrime() {
+    const n = cur.v;
+    if (!isPrime(n)) {
+      const f = smallestFactor(n);
+      return say(fb, `${n} is not prime — it can still be split. ` + (f === 2 ? `It's even, so 2 goes into it.` : `Try dividing it by ${f}.`));
+    }
+    cur.prime = true;
+    clear(fb);
+    next();
+  }
+  function next() {
+    const nx = leaves(root).find(n => !n.prime);
+    if (nx) { cur = nx; draw(); focus(); }
+    else { finished = true; draw(); onComplete(primes()); }
+  }
+  function focus() { if (inA) inA.focus({ preventScroll: true }); }
+  draw();
+  return box;
+}
+
+/* ── Venn rendering (shared by live step and summary) ─── */
+function vennEl(N, D, small, labels) {
+  const [ll, rl] = labels || [`Only in ${N}`, `Only in ${D}`];
+  const wrap = h('div', 'venn-wrap' + (small ? ' small' : ''));
+  wrap.append(h('div', 'vlabels', `<span class="vlabel l">${ll}</span><span class="vlabel m">In both</span><span class="vlabel r">${rl}</span>`));
+  const v = h('div', 'venn' + (small ? ' small' : ''));
+  v.innerHTML = '<div class="circle l"></div><div class="circle r"></div>';
+  const zones = { l: h('div', 'zone l'), m: h('div', 'zone m'), r: h('div', 'zone r') };
+  v.append(zones.l, zones.m, zones.r);
+  wrap.append(v);
+  return { v: wrap, zones };
+}
+
+/* ── Steps: Parts 1 & 2 ───────────────────────────────── */
+function stepMult(which) {
+  const top = which === 'top';
+  return {
+    short: top ? 'Multiply across the top' : 'Multiply across the bottom',
+    title: () => top ? 'Multiply across the top' : 'Multiply across the bottom',
+    render(body, done) {
+      const p = S.prob, [x, y] = top ? [p.a, p.c] : [p.b, p.d];
+      body.append(h('p', 'prompt', top
+        ? 'Multiply the two <b>numerators</b> — the top numbers.'
+        : 'Multiply the two <b>denominators</b> — the bottom numbers.'));
+      body.append(h('div', 'show', probHTML(p, top ? 'top' : 'bot')));
+      const row = h('div', 'eq'), i = numInput(), btn = h('button', 'btn', 'Check'), fb = h('div', 'fb');
+      row.append(h('span', top ? 't-top' : 't-bot', `${x} × ${y} =`), i, btn);
+      body.append(row, fb);
+      const check = () => {
+        const v = readInt(i);
+        if (isNaN(v)) return say(fb, 'Type a number in the box.');
+        if (v === x * y) { S.data[top ? 'N' : 'D'] = v; return done(); }
+        if (v === x + y) return say(fb, `That's ${x} + ${y}. We <b>multiply</b> across: ${x} × ${y}.`);
+        say(fb, `Not quite. What is ${x} × ${y}?`);
+        i.select();
+      };
+      btn.onclick = check;
+      wireEnter([i], check);
+    },
+    summary() {
+      const p = S.prob;
+      if (top) return `<span class="t-top">${p.a} × ${p.c} = ${S.data.N}</span>`;
+      return `<span class="t-bot">${p.b} × ${p.d} = ${S.data.D}</span>
+        <div class="show" style="font-size:1.6rem;margin-top:8px">${probHTML(p)} = ${frac(`<span class="t-top">${S.data.N}</span>`, `<span class="t-bot">${S.data.D}</span>`)}</div>`;
+    },
+  };
+}
+
+function stepTree(which) {
+  const top = which === 'top';
+  const key = top ? 'N' : 'D';
+  return {
+    short: top ? 'Prime-factor the top' : 'Prime-factor the bottom',
+    title: () => `Prime-factor the ${top ? 'top' : 'bottom'}: ${S.data[key]}`,
+    render(body, done) {
+      const n = S.data[key];
+      body.append(h('p', 'prompt', `Break <b>${n}</b> into prime factors. Split it into two factors, then keep splitting until every branch ends in a prime. If a number can't be split, mark it prime.`));
+      body.append(factorTree(n, top ? 'top' : 'bot', null, primes => {
+        S.data[top ? 'topF' : 'botF'] = primes;
+        setTimeout(done, 700);
+      }));
+    },
+    summary() {
+      const f = S.data[top ? 'topF' : 'botF'];
+      return `<span class="${top ? 't-top' : 't-bot'}">${S.data[key]} = ${f.join(' × ')}</span>`;
+    },
+  };
+}
+
+function stepVenn() {
+  return {
+    short: 'Venn diagram of the factors',
+    title: () => 'Sort the factors in a Venn diagram',
+    render(body, done) {
+      const { N, D, topF, botF } = S.data;
+      const chips = [
+        ...topF.map((v, i) => ({ id: 't' + i, v, side: 'top' })),
+        ...botF.map((v, i) => ({ id: 'b' + i, v, side: 'bot' })),
+      ];
+      const byId = Object.fromEntries(chips.map(c => [c.id, c]));
+      const loc = Object.fromEntries(chips.map(c => [c.id, 'tray']));
+      let pairs = [];   // middle: { v, top: id|null, bot: id|null }
+      let sel = null;
+
+      body.append(h('p', 'prompt',
+        `Put every prime factor in the diagram. A factor that is <b>only</b> in <span class="t-top">${N}</span> goes on the left. ` +
+        `A factor that is <b>only</b> in <span class="t-bot">${D}</span> goes on the right. ` +
+        `A factor that is in <b>both</b> goes in the middle — it takes one from each number.<br>` +
+        `<i>Click a factor, then click where it goes. Click a placed factor to take it back.</i>`));
+      const tray = h('div', 'tray');
+      const { v: venn, zones } = vennEl(N, D);
+      const fb = h('div', 'fb');
+      const btn = h('button', 'btn', 'Check my diagram');
+      body.append(tray, venn, h('div', 'btn-row'), fb);
+      body.lastChild.previousSibling.append(btn);
+
+      function takeBack(c) {
+        if (loc[c.id] === 'm') {
+          const p = pairs.find(p => p[c.side] === c.id);
+          p[c.side] = null;
+          if (!p.top && !p.bot) pairs = pairs.filter(q => q !== p);
+        }
+        loc[c.id] = 'tray';
+      }
+      function place(zone) {
+        if (!sel) return;
+        const c = byId[sel];
+        if (zone === 'l' && c.side === 'bot') { sel = null; draw(); return say(fb, `That ${c.v} is a factor of <span class="t-bot">${D}</span>, the bottom. The left side is only for <span class="t-top">${N}</span>.`); }
+        if (zone === 'r' && c.side === 'top') { sel = null; draw(); return say(fb, `That ${c.v} is a factor of <span class="t-top">${N}</span>, the top. The right side is only for <span class="t-bot">${D}</span>.`); }
+        takeBack(c);
+        if (zone === 'm') {
+          const p = pairs.find(p => p.v === c.v && p[c.side] === null);
+          if (p) p[c.side] = c.id;
+          else pairs.push({ v: c.v, top: null, bot: null, [c.side]: c.id });
+        }
+        loc[c.id] = zone;
+        sel = null;
+        clear(fb);
+        draw();
+      }
+      Object.entries(zones).forEach(([k, z]) => z.onclick = () => place(k));
+
+      function chipBtn(c) {
+        const b = h('button', `chip ${c.side}` + (sel === c.id ? ' sel' : ''), c.v);
+        b.onclick = e => {
+          e.stopPropagation();
+          if (loc[c.id] === 'tray') sel = sel === c.id ? null : c.id;
+          else { takeBack(c); sel = null; }
+          clear(fb);
+          draw();
+        };
+        return b;
+      }
+      function draw() {
+        tray.innerHTML = '';
+        for (const side of ['top', 'bot']) {
+          const row = h('div', 'tray-row');
+          row.append(h('span', 'lbl ' + (side === 'top' ? 't-top' : 't-bot'), side === 'top' ? `Factors of ${N} (top)` : `Factors of ${D} (bottom)`));
+          const left = chips.filter(c => c.side === side && loc[c.id] === 'tray');
+          if (left.length) left.forEach(c => row.append(chipBtn(c)));
+          else row.append(h('span', 'empty', 'all placed'));
+          tray.append(row);
+        }
+        zones.l.innerHTML = ''; zones.m.innerHTML = ''; zones.r.innerHTML = '';
+        chips.filter(c => loc[c.id] === 'l').forEach(c => zones.l.append(chipBtn(c)));
+        chips.filter(c => loc[c.id] === 'r').forEach(c => zones.r.append(chipBtn(c)));
+        pairs.forEach(p => {
+          if (p.top && p.bot) {
+            const b = h('button', 'chip pair', p.v);
+            b.title = `One ${p.v} from each number`;
+            b.onclick = e => { e.stopPropagation(); takeBack(byId[p.top]); takeBack(byId[p.bot]); clear(fb); draw(); };
+            zones.m.append(b);
+          } else {
+            const c = byId[p.top || p.bot];
+            const b = chipBtn(c);
+            b.classList.add('half');
+            zones.m.append(b);
+          }
+        });
+        venn.classList.toggle('armed', !!sel);
+        btn.disabled = chips.some(c => loc[c.id] === 'tray');
+      }
+      btn.onclick = () => {
+        const half = pairs.find(p => !p.top || !p.bot);
+        if (half) {
+          const other = half.top ? D : N;
+          return say(fb, `The ${half.v} in the middle needs a partner: a ${half.v} from ${other}. If ${other} doesn't have one to give, this ${half.v} belongs on its own side.`);
+        }
+        const L = chips.filter(c => loc[c.id] === 'l').map(c => c.v);
+        const R = chips.filter(c => loc[c.id] === 'r').map(c => c.v);
+        const missed = L.find(v => R.includes(v));
+        if (missed) return say(fb, `There's a ${missed} on the left <b>and</b> a ${missed} on the right. When both numbers have a factor, it goes in the middle.`);
+        S.data.shared = pairs.map(p => p.v).sort((a, b) => a - b);
+        S.data.onlyTop = L.sort((a, b) => a - b);
+        S.data.onlyBot = R.sort((a, b) => a - b);
+        say(fb, pairs.length
+          ? `Yes! ${N} and ${D} share: ${S.data.shared.join(', ')}.`
+          : `Correct — the middle is empty. ${N} and ${D} don't share any prime factors.`, 'good');
+        btn.disabled = true;
+        venn.style.pointerEvents = 'none';
+        tray.style.pointerEvents = 'none';
+        setTimeout(done, 1100);
+      };
+      draw();
+    },
+    summary() {
+      const { N, D, shared, onlyTop, onlyBot } = S.data;
+      const { v, zones } = vennEl(N, D, true);
+      onlyTop.forEach(x => zones.l.append(h('span', 'chip top static', x)));
+      shared.forEach(x => zones.m.append(h('span', 'chip pair static', x)));
+      onlyBot.forEach(x => zones.r.append(h('span', 'chip bot static', x)));
+      return v;
+    },
+  };
+}
+
+function stepGCF() {
+  return {
+    short: 'Find the GCF',
+    title: () => 'Find the GCF',
+    render(body, done) {
+      const { N, D, shared } = S.data;
+      const g = prod(shared);
+      if (shared.length) {
+        body.append(h('p', 'prompt', `The GCF is everything in the <span class="t-both">middle</span> of the Venn diagram, multiplied together.`));
+      } else {
+        body.append(h('p', 'prompt', `The middle of the Venn diagram is <b>empty</b> — ${N} and ${D} share no prime factors. But every number has one factor in common with every other number. What is it?`));
+      }
+      const row = h('div', 'eq'), i = numInput(), btn = h('button', 'btn', 'Check'), fb = h('div', 'fb');
+      row.append(h('span', 't-both', shared.length > 1 ? `GCF = ${shared.join(' × ')} =` : 'GCF ='), i, btn);
+      body.append(row, fb);
+      const check = () => {
+        const v = readInt(i);
+        if (isNaN(v)) return say(fb, 'Type a number in the box.');
+        if (v === g) { S.data.g = g; return done(); }
+        if (!shared.length && v === 0) return say(fb, `0 isn't a factor of anything. What number goes into <i>every</i> number?`);
+        if (!shared.length) return say(fb, `${v} doesn't go into both ${N} and ${D}. What number goes into <i>every</i> number?`);
+        say(fb, `Multiply everything in the middle: ${shared.join(' × ')}.`);
+        i.select();
+      };
+      btn.onclick = check;
+      wireEnter([i], check);
+    },
+    summary() {
+      const { shared, g } = S.data;
+      return `<span class="t-both">GCF = ${shared.length > 1 ? shared.join(' × ') + ' = ' : ''}${g}</span>` +
+        (shared.length ? '' : ' <span style="color:var(--muted)">(nothing shared, so the GCF is 1)</span>');
+    },
+  };
+}
+
+function stepSimplify() {
+  return {
+    short: 'Divide top and bottom by the GCF',
+    title: () => 'Divide the top and bottom by the GCF',
+    render(body, done) {
+      const { N, D, g } = S.data;
+      body.append(h('p', 'prompt', `Divide the top <b>and</b> the bottom by the GCF, ${g}.`));
+      const row = h('div', 'eq');
+      const iN = numInput(), iD = numInput();
+      const f = h('span', 'frac');
+      const fn = h('span', 'fn'), fd = h('span', 'fd');
+      fn.append(iN); fd.append(iD); f.append(fn, fd);
+      row.innerHTML = `${frac(`<span class="t-top">${N}</span> ÷ ${g}`, `<span class="t-bot">${D}</span> ÷ ${g}`)} <span>=</span>`;
+      row.append(f);
+      const btn = h('button', 'btn', 'Check'), fb = h('div', 'fb');
+      row.append(btn);
+      body.append(row, fb);
+      const check = () => {
+        const a = readInt(iN), b = readInt(iD);
+        if (isNaN(a) || isNaN(b)) return say(fb, 'Fill in both boxes.');
+        if (a !== N / g) return say(fb, `Check the top: ${N} ÷ ${g} = ?`);
+        if (b !== D / g) return say(fb, `Check the bottom: ${D} ÷ ${g} = ?`);
+        S.data.n = a; S.data.d = b;
+        done();
+      };
+      btn.onclick = check;
+      wireEnter([iN, iD], check);
+    },
+    summary() {
+      const { N, D, g, n, d } = S.data;
+      return `<div class="show" style="font-size:1.5rem">${frac(`${N} ÷ ${g}`, `${D} ÷ ${g}`)} = ${frac(n, d)}</div>`;
+    },
+  };
+}
+
+/* ── Steps: Part 3 ────────────────────────────────────── */
+// Multiple choice: why can the order change? Answer: commutative property.
+function orderQuestion(fb, onCorrect) {
+  const OPTIONS = [
+    { label: 'Because of the commutative property', right: true,
+      fb: '<b>Yes!</b> The commutative property says order doesn\'t matter when you multiply: a × b = b × a. What comes next? Let\'s find out.' },
+    { label: 'Because of the associative property',
+      fb: 'Close, but the associative property is about <b>grouping</b>: (a × b) × c = a × (b × c). Which property is about changing the <b>order</b>?' },
+    { label: 'Because of the identity property',
+      fb: 'The identity property says multiplying by 1 doesn\'t change a number: a × 1 = a. That isn\'t about order. Try again.' },
+    { label: 'Because of the inverse property',
+      fb: 'The inverse property says a number times its reciprocal is 1: a × 1/a = 1. That isn\'t about order. Try again.' },
+  ];
+  const box = h('div', 'mc');
+  box.append(h('div', 'mc-q', 'Why are we allowed to change the order?'));
+  const opts = h('div', 'mc-opts');
+  shuffle(OPTIONS).forEach(o => {
+    const b = h('button', 'mc-opt', o.label);
+    b.onclick = () => {
+      if (o.right) {
+        opts.querySelectorAll('button').forEach(x => x.disabled = true);
+        b.classList.add('right');
+        say(fb, o.fb, 'good');
+        onCorrect();
+      } else {
+        b.classList.add('wrong');
+        b.disabled = true;
+        say(fb, o.fb);
+      }
+    };
+    opts.append(b);
+  });
+  box.append(opts);
+  return box;
+}
+
+function stepSplash() {
+  return {
+    short: 'Can I change the order?',
+    title: () => 'Big question',
+    render(body, done) {
+      const s = h('div', 'splash');
+      s.innerHTML = `<div class="big">CAN I CHANGE<br>THE ORDER?</div>
+        <div class="sub">Here are the steps we used in Parts 1 and 2.<br>We multiplied first, then did prime factorization.</div>`;
+      const list = h('ol', 'order-list');
+      // Same labels the Part 1 sidebar uses; 2 and 3 are the prime-factor steps.
+      const items = buildSteps(1).map((st, i) => {
+        const li = h('li', i === 2 || i === 3 ? 'pf' : i < 2 ? 'mult' : '');
+        li.innerHTML = `<span class="k">${i + 1}</span><span class="lbl">${st.short}</span>`;
+        list.append(li);
+        return li;
+      });
+      const q = h('div', 'sub', 'What if we did the <b>prime factorization first</b>?');
+      const row = h('div', 'btn-row'), move = h('button', 'btn', 'Move prime factorization first ↑');
+      row.append(move);
+      const fb = h('div', 'fb');
+      s.append(list, q, row);
+      body.append(s, fb);
+
+      move.onclick = () => {
+        move.disabled = true;
+        const before = new Map(items.map(li => [li, li.getBoundingClientRect().top]));
+        const order = [items[2], items[3], items[0], items[1], ...items.slice(4)];
+        order.forEach(li => list.append(li));
+        order.forEach((li, i) => {
+          li.querySelector('.k').textContent = i + 1;
+          const dy = before.get(li) - li.getBoundingClientRect().top;
+          li.style.transition = 'none';
+          li.style.transform = `translateY(${dy}px)`;
+        });
+        list.offsetHeight;   // flush so the transition starts from the old spot
+        order.forEach(li => { li.style.transition = 'transform .9s cubic-bezier(.2,.8,.2,1)'; li.style.transform = ''; });
+        setTimeout(() => {
+          items[2].querySelector('.lbl').textContent = 'Prime-factor each top number';
+          items[3].querySelector('.lbl').textContent = 'Prime-factor each bottom number';
+          items[2].classList.add('moved'); items[3].classList.add('moved');
+          row.remove();
+          const rest = [items[0], items[1], ...items.slice(4)];
+          rest.forEach(li => li.classList.add('gone'));
+          setTimeout(() => {
+            rest.forEach(li => li.remove());
+            const qm = h('li', 'qmark pop', '<span class="k">3</span><span class="lbl">?</span>');
+            list.append(qm);
+            q.innerHTML = 'Prime factorization comes first. We haven\'t multiplied yet, so we factor <b>each number on its own</b>.';
+            fb.before(orderQuestion(fb, () => {
+              const go = h('button', 'btn', 'Let\'s try it →');
+              go.onclick = () => { S.seenSplash = true; done(); };
+              body.append(go);
+              go.focus({ preventScroll: true });
+            }));
+          }, 650);
+        }, 950);
+      };
+    },
+    summary: () => '<b>Can I change the order?</b> Yes, because of the commutative property. Prime factorization moves to the top. Then … <b>?</b>',
+  };
+}
+
+function stepRewrite() {
+  return {
+    short: 'Rewrite as one fraction',
+    title: () => 'Rewrite as one fraction',
+    render(body, done) {
+      const p = S.prob;
+      body.append(h('p', 'prompt', `Write the problem as <b>one</b> fraction. Don't multiply yet — put the numerators in parentheses on top and the denominators in parentheses on the bottom.`));
+      const row = h('div', 'big-frac');
+      row.innerHTML = `${probHTML(p)} <span>=</span>`;
+      const ins = [numInput('sm'), numInput('sm'), numInput('sm'), numInput('sm')];
+      const f = h('span', 'frac'), fn = h('span', 'fn'), fd = h('span', 'fd');
+      fn.append(h('span', 'paren', '('), ins[0], h('span', 'times', '×'), ins[1], h('span', 'paren', ')'));
+      fd.append(h('span', 'paren', '('), ins[2], h('span', 'times', '×'), ins[3], h('span', 'paren', ')'));
+      f.append(fn, fd);
+      row.append(f);
+      const btn = h('button', 'btn', 'Check'), fb = h('div', 'fb');
+      body.append(row, h('div', 'btn-row'), fb);
+      body.children[2].append(btn);
+      const same = (x, y, a, b) => (x === a && y === b) || (x === b && y === a);
+      const check = () => {
+        const v = ins.map(readInt);
+        if (v.some(isNaN)) return say(fb, 'Fill in all four boxes.');
+        const topOk = same(v[0], v[1], p.a, p.c), botOk = same(v[2], v[3], p.b, p.d);
+        if (topOk && botOk) return done();
+        if (same(v[0], v[1], p.b, p.d) && same(v[2], v[3], p.a, p.c)) return say(fb, 'Flipped! The numerators go on top and the denominators on the bottom.');
+        if (!topOk) return say(fb, `The top holds both <b>numerators</b>: ${p.a} and ${p.c}.`);
+        say(fb, `The bottom holds both <b>denominators</b>: ${p.b} and ${p.d}.`);
+      };
+      btn.onclick = check;
+      wireEnter(ins, check);
+    },
+    summary() {
+      const p = S.prob;
+      return `<div class="show" style="font-size:1.5rem">${probHTML(p)} = ${frac(`<span class="t-top">(${p.a} × ${p.c})</span>`, `<span class="t-bot">(${p.b} × ${p.d})</span>`)}</div>`;
+    },
+  };
+}
+
+function stepTreesAll() {
+  return {
+    short: 'Prime-factor every number',
+    title: () => 'Prime-factor every number',
+    render(body, done) {
+      const p = S.prob;
+      body.append(h('p', 'prompt', 'Now do prime factorization — on each of the four numbers, <b>before</b> multiplying anything.'));
+      const grid = h('div', 'tree-grid');
+      const results = {};
+      const finish = () => {
+        if (Object.keys(results).length < 4) return;
+        S.data.topF = [...results.a, ...results.c];
+        S.data.botF = [...results.b, ...results.d];
+        setTimeout(done, 700);
+      };
+      grid.append(h('div', 'row-label t-top', 'Top'));
+      grid.append(factorTree(p.a, 'top', `${p.a}`, f => { results.a = f; finish(); }));
+      grid.append(factorTree(p.c, 'top', `${p.c}`, f => { results.c = f; finish(); }));
+      grid.append(h('div', 'row-label t-bot', 'Bottom'));
+      grid.append(factorTree(p.b, 'bot', `${p.b}`, f => { results.b = f; finish(); }));
+      grid.append(factorTree(p.d, 'bot', `${p.d}`, f => { results.d = f; finish(); }));
+      body.append(grid);
+    },
+    summary() {
+      const { topF, botF } = S.data;
+      return `<div class="show" style="font-size:1.5rem">${frac(`<span class="t-top">(${topF.join(' × ')})</span>`, `<span class="t-bot">(${botF.join(' × ')})</span>`)}</div>`;
+    },
+  };
+}
+
+function stepCancel() {
+  return {
+    short: 'Cross out matching pairs',
+    title: () => 'Cross out matching pairs',
+    render(body, done) {
+      const { topF, botF } = S.data;
+      const chips = [
+        ...topF.map((v, i) => ({ id: 't' + i, v, side: 'top' })),
+        ...botF.map((v, i) => ({ id: 'b' + i, v, side: 'bot' })),
+      ];
+      const crossed = new Map();   // id -> partner id
+      let sel = null;
+      body.append(h('p', 'prompt',
+        `A number divided by itself is 1 — so a factor on top that matches a factor on the bottom is just × 1. ` +
+        `This is the middle of the Venn diagram. Click a factor on top, then its match on the bottom, to cross out the pair. Keep going until there are no matches left.<br>` +
+        `<i>Click a crossed-out factor to undo that pair.</i>`));
+      const wrap = h('div', 'big-frac'), fb = h('div', 'fb');
+      const btn = h('button', 'btn', 'No more matches');
+      body.append(wrap, h('div', 'btn-row'), fb);
+      body.children[2].append(btn);
+
+      function click(c) {
+        clear(fb);
+        if (crossed.has(c.id)) {
+          const o = crossed.get(c.id);
+          crossed.delete(c.id); crossed.delete(o);
+        } else if (!sel || chips.find(x => x.id === sel).side === c.side) {
+          sel = sel === c.id ? null : c.id;
+        } else {
+          const s = chips.find(x => x.id === sel);
+          if (s.v === c.v) { crossed.set(s.id, c.id); crossed.set(c.id, s.id); }
+          else say(fb, `A ${s.v} can only cancel another ${s.v}. ${s.v} ÷ ${c.v} isn't 1.`);
+          sel = null;
+        }
+        draw();
+      }
+      function row(side) {
+        const el = h('span', side === 'top' ? 'fn' : 'fd');
+        el.append(h('span', 'paren', '('));
+        chips.filter(c => c.side === side).forEach((c, i) => {
+          if (i) el.append(h('span', 'times', '×'));
+          const b = h('button', `chip ${side}` + (sel === c.id ? ' sel' : '') + (crossed.has(c.id) ? ' x' : ''), c.v);
+          b.onclick = () => click(c);
+          el.append(b);
+        });
+        el.append(h('span', 'paren', ')'));
+        return el;
+      }
+      function draw() {
+        wrap.innerHTML = '';
+        const f = h('span', 'frac');
+        f.append(row('top'), row('bot'));
+        wrap.append(f);
+      }
+      btn.onclick = () => {
+        const left = side => chips.filter(c => c.side === side && !crossed.has(c.id)).map(c => c.v);
+        const T = left('top'), B = left('bot');
+        const missed = T.find(v => B.includes(v));
+        if (missed) return say(fb, `Look again — there's still a ${missed} on top and a ${missed} on the bottom.`);
+        S.data.leftTop = T; S.data.leftBot = B;
+        S.data.cancelled = [...crossed.keys()].filter(id => id[0] === 't').map(id => chips.find(c => c.id === id).v).sort((a, b) => a - b);
+        done();
+      };
+      draw();
+    },
+    summary() {
+      const c = S.data.cancelled;
+      return `Crossed out ${c.length} matching pair${c.length === 1 ? '' : 's'}: ${c.map(v => `<span class="t-both">${v}</span>`).join(', ')}`;
+    },
+  };
+}
+
+// After cancelling: old step list on the left, new one on the right. Cancelling
+// fills the "?" and replaces Venn + GCF + divide; multiply is the only step left.
+function stepCompareLists() {
+  const row = (k, label, cls = '') => h('li', cls, `<span class="k">${k}</span><span class="lbl">${label}</span>`);
+  const markUsed = (li, to) => { li.classList.remove('hit', 'mult'); li.classList.add('used'); li.append(h('span', 'to', `→ ${to}`)); };
+  return {
+    short: 'Compare the lists',
+    title: () => 'Old list, new list',
+    render(body, done) {
+      body.append(h('p', 'prompt', 'Here is the list of steps from Parts 1 and 2, next to our new list.'));
+      const cols = h('div', 'lists-2');
+      const oldCol = h('div', 'list-col', '<div class="list-h">Parts 1 &amp; 2</div>');
+      const newCol = h('div', 'list-col', '<div class="list-h">Factor first</div>');
+      const oldList = h('ol', 'order-list'), newList = h('ol', 'order-list');
+      const old = buildSteps(1).map((st, i) => { const li = row(i + 1, st.short, i < 2 ? 'mult' : ''); oldList.append(li); return li; });
+      markUsed(old[2], 1); markUsed(old[3], 2);
+      newList.append(row(1, 'Prime-factor each top number', 'pf'), row(2, 'Prime-factor each bottom number', 'pf'));
+      const qm = row(3, '?', 'qmark');
+      newList.append(qm);
+      oldCol.append(oldList); newCol.append(newList);
+      cols.append(oldCol, newCol);
+      const note = h('p', 'prompt', 'You just cancelled the matching pairs. That is step 3 on the new list.<br><b>Which old steps did cancelling replace?</b> Click them on the left, then check.');
+      const btns = h('div', 'btn-row'), check = h('button', 'btn', 'Check');
+      const fb = h('div', 'fb');
+      btns.append(check);
+      body.append(cols, note, btns, fb);
+
+      // Student guesses which old steps cancelling covers (answer: Venn, GCF, divide).
+      const ANSWER = [4, 5, 6];
+      const HINTS = {
+        4: 'Finding a factor that is on the top <b>and</b> the bottom — which old step sorted factors into "in both"?',
+        5: 'Multiply the pairs you crossed out. What do you get? Which old step found that number?',
+        6: 'Each crossed-out pair is a number divided by itself. Which old step divided the top and bottom?',
+      };
+      const picked = new Set();
+      const pickable = [0, 1, 4, 5, 6];
+      pickable.forEach(i => {
+        old[i].classList.add('pickable');
+        old[i].onclick = () => {
+          picked.has(i) ? picked.delete(i) : picked.add(i);
+          old[i].classList.toggle('picked', picked.has(i));
+          clear(fb);
+        };
+      });
+      check.onclick = () => {
+        if (!picked.size) return say(fb, 'Click the old steps on the left that you think cancelling did.');
+        if (picked.has(0) || picked.has(1)) return say(fb, 'Did cancelling multiply anything? Look at your fraction — there are still factors waiting to be multiplied.');
+        const missing = ANSWER.find(i => !picked.has(i));
+        if (missing !== undefined) return say(fb, `Good so far — but cancelling did more than that. ${HINTS[missing]}`);
+        pickable.forEach(i => { old[i].classList.remove('pickable', 'picked'); old[i].onclick = null; });
+        check.remove();
+        say(fb, 'Yes! Cancelling did all three.', 'good');
+        reveal();
+      };
+
+      const reveal = () => {
+        [4, 5, 6].forEach(i => old[i].classList.add('hit'));
+        setTimeout(() => {
+          const cancel = row(3, 'Cancel matching pairs<small>Venn diagram, find the GCF, and divide — all in one fell swoop</small>', 'pf moved pop');
+          qm.replaceWith(cancel);
+          [4, 5, 6].forEach(i => markUsed(old[i], 3));
+          note.innerHTML = 'Cancelling does the Venn diagram, the GCF, <b>and</b> the dividing all at once.<br>The only thing left on the old list is <b>multiply</b>.';
+          old[0].classList.add('left'); old[1].classList.add('left');
+          const move = h('button', 'btn', 'Move multiply over →');
+          btns.append(move);
+          move.onclick = () => {
+            move.remove();
+            const from = old[0].getBoundingClientRect();
+            const mult = row(4, 'Multiply what\'s left<small>across the top and across the bottom</small>', 'multnew');
+            newList.append(mult);
+            const to = mult.getBoundingClientRect();
+            mult.style.transition = 'none';
+            mult.style.transform = `translate(${from.left - to.left}px, ${from.top - to.top}px)`;
+            mult.offsetHeight;
+            mult.style.transition = 'transform .9s cubic-bezier(.2,.8,.2,1)';
+            mult.style.transform = '';
+            markUsed(old[0], 4); markUsed(old[1], 4);
+            old[0].classList.remove('left'); old[1].classList.remove('left');
+            setTimeout(() => {
+              note.innerHTML = 'Every old step has a place on the new list. Now multiply what\'s left.';
+              const go = h('button', 'btn', 'Let\'s go →');
+              go.onclick = done;
+              btns.append(go);
+              go.focus({ preventScroll: true });
+            }, 950);
+          };
+        }, 900);
+      };
+    },
+    summary: () => 'Cancel = Venn diagram + GCF + divide, in one step. The only step left is <b>multiply</b>.',
+  };
+}
+
+// The fraction of prime factors with the cancelled pairs struck through.
+function crossedOutHTML() {
+  const { topF, botF, cancelled } = S.data;
+  const mark = (arr, cls) => {
+    const toX = [...cancelled];
+    return arr.map(v => {
+      const k = toX.indexOf(v);
+      if (k >= 0) { toX.splice(k, 1); return `<span class="chip ${cls} static x">${v}</span>`; }
+      return `<span class="chip ${cls} static">${v}</span>`;
+    }).join('<span class="times">×</span>');
+  };
+  return `<div class="big-frac" style="font-size:1.3rem">${frac(`<span class="paren">(</span>${mark(topF, 'top')}<span class="paren">)</span>`, `<span class="paren">(</span>${mark(botF, 'bot')}<span class="paren">)</span>`)}</div>`;
+}
+
+function stepLeftovers() {
+  return {
+    short: 'Multiply what\'s left',
+    title: () => 'Multiply what\'s left',
+    render(body, done) {
+      const { leftTop, leftBot } = S.data;
+      const pt = prod(leftTop), pb = prod(leftBot);
+      body.append(h('p', 'prompt', 'Multiply what is left on the top, and what is left on the bottom. Write the answer as a fraction.'));
+      body.append(h('div', null, crossedOutHTML()));
+      const row = h('div', 'eq');
+      const iN = numInput(), iD = numInput();
+      const f = h('span', 'frac'), fn = h('span', 'fn'), fd = h('span', 'fd');
+      fn.append(iN); fd.append(iD); f.append(fn, fd);
+      row.append(h('span', null, 'Answer:'), f);
+      const btn = h('button', 'btn', 'Check'), fb = h('div', 'fb');
+      row.append(btn);
+      body.append(row, fb);
+      const pairs = S.data.cancelled;
+      const eg = pairs.length ? pairs[0] : 3;
+      const check = () => {
+        const a = readInt(iN), b = readInt(iD);
+        if (isNaN(a) || isNaN(b)) return say(fb, 'Fill in both boxes.');
+        for (const [v, want, side, left] of [[a, pt, 'top', leftTop], [b, pb, 'bottom', leftBot]]) {
+          if (v === want) continue;
+          if (v === 0) return say(fb, `Crossing out a pair doesn't leave <b>nothing</b>. The ${eg} on top and the ${eg} on the bottom make ${frac(eg, eg)} — and what is ${eg} ÷ ${eg}? Look at the ${side} again.`);
+          if (!left.length) return say(fb, `Everything on the ${side} is crossed out. What does each crossed-out pair equal? What happens when you multiply those together?`);
+          return say(fb, `Check the ${side}. Multiply every factor on the ${side} that is <b>not</b> crossed out.`);
+        }
+        S.data.n = a; S.data.d = b;
+        done();
+      };
+      btn.onclick = check;
+      wireEnter([iN, iD], check);
+    },
+    summary() {
+      const { leftTop, leftBot, n, d } = S.data;
+      const show = arr => arr.length ? arr.join(' × ') : '1';
+      return `<div class="show" style="font-size:1.5rem">${frac(show(leftTop), show(leftBot))} = ${frac(n, d)}</div>`;
+    },
+  };
+}
+
+/* ── Engine ───────────────────────────────────────────── */
+const mainEl = document.getElementById('main');
+
+function buildSteps(part) {
+  if (part < 3) return [stepMult('top'), stepMult('bot'), stepTree('top'), stepTree('bot'), stepVenn(), stepGCF(), stepSimplify()];
+  const s = [stepRewrite(), stepTreesAll(), stepCancel(), stepCompareLists(), stepLeftovers()];
+  if (!S.seenSplash) s.unshift(stepSplash());
+  return s;
+}
+
+function startPart(part, prob) {
+  S.part = part;
+  S.prob = prob || (part === 1 ? genPart1() : part === 3 && S.lastPart2 && !S.seenSplash ? S.lastPart2 : genPart2());
+  S.steps = buildSteps(part);
+  S.idx = 0;
+  S.data = {};
+  mainEl.innerHTML = '';
+  if (PARTS[part].intro) mainEl.append(h('div', 'intro', PARTS[part].intro));
+  drawTabs();
+  document.getElementById('sideProb').innerHTML = probHTML(S.prob);
+  appendActive();
+}
+
+function appendActive() {
+  const step = S.steps[S.idx];
+  const card = h('section', 'card active');
+  card.innerHTML = `<div class="card-h"><span class="n">${S.idx + 1}</span><h3>${step.title()}</h3></div>`;
+  const body = h('div', 'card-b');
+  card.append(body);
+  mainEl.append(card);
+  let finished = false;
+  step.render(body, () => {
+    if (finished) return;
+    finished = true;
+    card.className = 'card done';
+    card.querySelector('.n').textContent = '✓';
+    body.innerHTML = '';
+    const s = step.summary();
+    if (typeof s === 'string') body.innerHTML = s; else body.append(s);
+    S.idx++;
+    if (S.idx < S.steps.length) appendActive(); else finishProblem();
+  });
+  drawProc();
+  if (S.idx > 0) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  const first = card.querySelector('input, .card-b .btn');
+  if (first && S.idx > 0) setTimeout(() => first.focus({ preventScroll: true }), 50);
+}
+
+function drawProc() {
+  const ol = document.getElementById('proc');
+  ol.innerHTML = '';
+  S.steps.forEach((s, i) => ol.append(h('li', i < S.idx ? 'done' : i === S.idx ? 'cur' : '', s.short)));
+}
+
+function finishProblem() {
+  drawProc();
+  const p = S.prob, part = S.part;
+  const box = h('section', 'finish');
+  const N = p.a * p.c, D = p.b * p.d, g = gcd(N, D);
+  let msg;
+  if (part === 1) {
+    msg = `The GCF was 1, so ${frac(N, D)} was already in simplest form. That will always happen when every number in the problem is a <b>different prime</b> — the top and bottom have nothing to share.`;
+  } else if (part === 2) {
+    msg = `${frac(N, D)} simplifies to ${frac(N / g, D / g)} because the top and bottom shared a GCF of ${g}.`;
+    S.lastPart2 = p;
+  } else {
+    const big = Math.max(p.a, p.b, p.c, p.d);
+    msg = `The long way: multiply to get ${frac(N, D)}, then divide by the GCF of ${g} to get ${frac(N / g, D / g)}. <b>Same answer.</b>` +
+      (sameProb(p, S.lastPart2) ? ' (That\'s the problem you did in Part 2!)' : '') +
+      `<br>Changing the order meant the biggest number you had to factor was ${big} instead of ${Math.max(N, D)}.`;
+  }
+  box.innerHTML = `<h3>Done!</h3><div class="answer">${probHTML(p)} = ${frac(S.data.n, S.data.d)}</div><p>${msg}</p>`;
+  const row = h('div', 'btn-row');
+  const again = h('button', 'btn' + (part < 3 ? ' ghost' : ''), 'Another problem');
+  again.onclick = () => startPart(part);
+  row.append(again);
+  if (part < 3) {
+    S.unlocked = Math.max(S.unlocked, part + 1);
+    const nxt = h('button', 'btn', `Go to Part ${part + 1} →`);
+    nxt.onclick = () => startPart(part + 1);
+    row.append(nxt);
+  }
+  box.append(row);
+  mainEl.append(box);
+  drawTabs();
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function drawTabs() {
+  const nav = document.getElementById('tabs');
+  nav.innerHTML = '';
+  [1, 2, 3].forEach(n => {
+    const b = h('button', 'tab' + (n === S.part ? ' on' : ''), (n > S.unlocked ? '🔒 ' : '') + PARTS[n].tab);
+    b.disabled = n > S.unlocked;
+    b.onclick = () => { if (n !== S.part) startPart(n); };
+    nav.append(b);
+  });
+}
+
+startPart(1);
+</script>
+</body>
+</html>
