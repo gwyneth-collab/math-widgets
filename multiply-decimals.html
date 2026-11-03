@@ -236,14 +236,6 @@
     text-align: center; font-size: 1.05rem; color: var(--muted); line-height: 1.6;
   }
 
-  /* ── Summary ─────────────────────────────────────────── */
-  .summary { text-align: center; display: flex; flex-direction: column; gap: 16px; align-items: center; padding: 20px 0; }
-  .summary .big { font-size: 3rem; font-weight: 700; color: var(--accent-dk); }
-  .recap { list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 1.2rem; font-variant-numeric: tabular-nums; }
-  .recap li { display: flex; align-items: center; gap: .4em; justify-content: center; }
-  .recap .mark { width: 1.4em; font-weight: 700; }
-  .recap .mark.ok { color: var(--good); }
-  .recap .mark.miss { color: var(--zero); }
 
   @media (max-width: 900px) { .split3 { grid-template-columns: 1fr; } }
   @media (max-width: 600px) {
@@ -319,11 +311,12 @@ function makeRound() {
 
 // Page 2: put decimal points into a page-3 problem (two 3-digit numbers), one with
 // 1 decimal place and the other with 2, so the same whole numbers carry over.
-function makeSplit() {
-  const mult = makeMult(), pa = 1 + Math.floor(Math.random() * 2);
+function splitOf(mult) {
+  const pa = 1 + Math.floor(Math.random() * 2);
   return { kind: 'split', firstTry: true, mult,
            a: { digits: String(mult.a), places: pa }, b: { digits: String(mult.b), places: 3 - pa } };
 }
+const makeSplit = () => splitOf(makeMult());
 function makeSplitRound() { return Array.from({ length: N_SPLIT }, makeSplit); }
 
 // digits shifted so `m` of them sit after the point, e.g. ("3214", 2) → "32.14"
@@ -424,17 +417,15 @@ function wrongMsg(p, m) {
 const PAGES = [
   { tab: '1 · Decimal → whole × 1/10ⁿ', title: 'Decimals as Whole Numbers × 1 / 10ⁿ',
     make: makeRound, introAt: [0, N_CHOICE],
-    extra: () => Object.assign(makeProblem(), { kind: 'zeros', firstTry: true }),
-    recap: p => `${decimalStr(p)} ${equals} ${p.digits} ${times} ${frac(1, power(p.places))}` },
+    extra: () => Object.assign(makeProblem(), { kind: 'zeros', firstTry: true }) },
   { tab: '2 · Split & rearrange', title: 'Split and Rearrange',
-    make: makeSplitRound, introAt: [0], extra: makeSplit,
-    recap: p => `${decimalStr(p.a)} ${times} ${decimalStr(p.b)} ${equals} ${grouped(p)}` },
+    make: makeSplitRound, introAt: [0], extra: makeSplit },
   { tab: '3 · Multiply 3-digit numbers', title: 'Review: Multiplying 3-Digit Numbers',
     make: makeMultRound, introAt: [0], wide: true, extra: makeMult,
-    recap: p => `${p.a} ${times} ${p.b} ${equals} ${p.S}` },
+    // carry the last problem on, with decimal points put back in
+    next: p => goTo(3, makeFinish(splitOf(p))) },
   { tab: '4 · Multiply the fractions', title: 'Multiply the Fractions',
-    make: () => [makeFinish()], introAt: [0], extra: () => makeFinish(),
-    recap: p => `${decimalStr(p.split.a)} ${times} ${decimalStr(p.split.b)} ${equals} ${finalAnswer(p.split)}` },
+    make: () => [makeFinish()], introAt: [0], extra: () => makeFinish() },
 ];
 const SHOW = { choice: p => showChoice(p), zeros: p => showZeros(p), split: p => showSplit(p),
                mult: p => showMult(p), finish: p => showFinish(p) };
@@ -458,7 +449,6 @@ function start() {
 
 function show() {
   renderProgress();
-  if (idx >= round.length) return summary();
   const p = round[idx];
   SHOW[p.kind](p);
 }
@@ -1005,34 +995,24 @@ function nextButton() {
   if (idx + 1 < round.length) {
     row.innerHTML = `<button class="btn" id="go">Next problem →</button>`;
   } else {
-    row.innerHTML = `<button class="btn" id="go">See results</button>
+    row.innerHTML = `<button class="btn" id="go">Next step →</button>
       <button class="btn ghost" id="more">Try a new problem</button>`;
     document.getElementById('more').onclick = tryNew;
   }
   const go = document.getElementById('go');
-  go.onclick = () => { idx++; show(); };
+  go.onclick = idx + 1 < round.length ? () => { idx++; show(); } : nextStep;
   go.focus();
 }
 
-function summary() {
-  const score = round.filter(p => p.firstTry).length;
-  main.innerHTML = `
-    <div class="summary">
-      <div class="counter">Round complete</div>
-      <div class="big">${score} / ${round.length}</div>
-      <div class="prompt">right on the first try</div>
-      <ul class="recap">${round.map(p => `
-        <li><span class="mark ${p.firstTry ? 'ok' : 'miss'}">${p.firstTry ? '✓' : '↻'}</span>
-          ${PAGES[page].recap(p)}</li>`).join('')}
-      </ul>
-      <div class="btn-row">
-        <button class="btn" id="more">Try a new problem</button>
-        <button class="btn ghost" id="again">Start over with new numbers</button>
-      </div>
-    </div>`;
-  document.getElementById('more').onclick = tryNew;
-  document.getElementById('again').onclick = start;
+// Move on to the next tab.
+function nextStep() {
+  const pg = PAGES[page];
+  if (pg.next) return pg.next(round[idx]);
+  page++;
+  start();
+  window.scrollTo(0, 0);
 }
+
 
 start();
 </script>
