@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multiplying Decimals</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #1f2433;
+    --muted: #5d6680;
+    --line: #dde2ee;
+    --paper: #ffffff;
+    --bg: #eef2fa;
+    --accent: #3b4bb8;
+    --accent-dk: #2c3a99;
+    --zero: #cf6a17;
+    --zero-soft: #fff0e2;
+    --whole: #2466d1;
+    --whole-soft: #e4eeff;
+    --good: #1b7a3d;
+    --good-soft: #e7f6ec;
+    --bad: #b3261e;
+    --bad-soft: #fdecea;
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  .widget {
+    max-width: 860px;
+    margin: 0 auto;
+    background: var(--paper);
+    border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(30, 40, 90, .12);
+    overflow: hidden;
+  }
+
+  /* ── Header ──────────────────────────────────────────── */
+  header {
+    background: linear-gradient(135deg, var(--accent-dk) 0%, #5a6bd6 100%);
+    color: #fff;
+    padding: 22px 32px 0;
+  }
+  .eyebrow {
+    font-size: .75rem; font-weight: 600; letter-spacing: .15em;
+    text-transform: uppercase; opacity: .75; margin-bottom: 4px;
+  }
+  header h1 { font-size: 1.8rem; font-weight: 700; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 16px; }
+  .tab {
+    font: inherit; font-size: .95rem; font-weight: 600;
+    border: none; cursor: pointer;
+    padding: 10px 16px; border-radius: 10px 10px 0 0;
+    background: rgba(255,255,255,.14); color: #fff;
+  }
+  .tab:hover { background: rgba(255,255,255,.24); }
+  .tab.on { background: var(--paper); color: var(--accent-dk); }
+
+  .progress { display: flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
+  .dot {
+    width: 28px; height: 8px; border-radius: 4px; background: rgba(255,255,255,.25);
+  }
+  .dot.cur { background: #fff; }
+  .dot.ok { background: #7fe0a2; }
+  .dot.miss { background: #ffc58f; }
+
+  main { padding: 26px 32px 36px; display: flex; flex-direction: column; gap: 18px; }
+
+  .intro {
+    background: #f6f8fd; border-left: 4px solid var(--accent);
+    padding: 14px 18px; border-radius: 0 10px 10px 0; line-height: 1.55; font-size: 1rem;
+  }
+
+  .counter { font-size: .8rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .prompt { font-size: 1.1rem; line-height: 1.55; }
+
+  /* ── Math bits ───────────────────────────────────────── */
+  .eq {
+    display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+    gap: .35em; row-gap: .7em; font-size: 2.2rem; padding: 14px 0; font-variant-numeric: tabular-nums;
+  }
+  .frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; }
+  .frac > .fn { border-bottom: .07em solid currentColor; padding: 0 .3em .04em; width: 100%; text-align: center; }
+  .frac > .fd { padding: .04em .3em 0; display: inline-flex; align-items: center; }
+  .op { color: var(--muted); }
+  .z { color: var(--zero); font-weight: 700; }
+  .pow sup { font-size: .6em; color: var(--zero); font-weight: 700; }
+  .blank {
+    display: inline-block; min-width: 2.2em; height: 1.1em; vertical-align: middle;
+    border-bottom: 3px dashed #9aa2b8; margin-left: .05em;
+  }
+  .q { color: var(--accent); font-weight: 700; }
+  .hop { position: relative; display: inline-flex; align-items: baseline; padding-bottom: .75em; margin-bottom: -.75em; }
+  .hop .gap { display: inline-block; overflow: visible; text-align: center; }
+  .hop .gap.ghost { color: #b9c1d6; }
+  .hop .pt { position: absolute; top: 0; color: var(--zero); font-weight: 700; text-align: center; }
+  .hop svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+  .hop path { fill: none; stroke: var(--zero); stroke-width: 3; stroke-linecap: round; }
+  .hop text { fill: var(--zero); font-size: .45em; font-weight: 700; text-anchor: middle; }
+  .seg { display: inline-flex; align-items: center; gap: .35em; white-space: nowrap; }
+
+  .z.pop { display: inline-block; animation: pop .35s ease-out; }
+  @keyframes pop { from { transform: translateY(-.4em) scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  /* ── Controls ────────────────────────────────────────── */
+  .choices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .choice {
+    font: inherit; font-size: 1.4rem; font-weight: 700; cursor: pointer;
+    padding: 14px 6px; border-radius: 12px; border: 2px solid #b9c1d6;
+    background: #fff; color: var(--ink);
+  }
+  .choice:hover:not(:disabled) { border-color: var(--accent); background: #eef0fc; }
+  .choice:disabled { cursor: default; opacity: .5; }
+  .choice.wrong { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); opacity: 1; }
+  .choice.right { border-color: var(--good); background: var(--good-soft); color: var(--good); opacity: 1; }
+
+  .zero-row { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; font-size: 1.15rem; }
+  .num-in {
+    font: inherit; font-size: 1.5rem; font-weight: 700; text-align: center;
+    width: 3em; padding: 6px; border-radius: 10px;
+    border: 2px solid #b9c1d6; background: #fff; color: var(--ink);
+  }
+  .num-in:focus { outline: none; border-color: var(--accent); }
+
+  .btn {
+    font: inherit; font-size: 1rem; font-weight: 600; cursor: pointer;
+    padding: 10px 18px; border-radius: 10px; border: none;
+    background: var(--accent); color: #fff;
+  }
+  .btn:hover:not(:disabled) { background: var(--accent-dk); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn.ghost { background: #fff; color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+  .btn.ghost:hover:not(:disabled) { background: #eef0fc; }
+  .btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+  .fb { font-size: 1.05rem; line-height: 1.55; padding: 12px 16px; border-radius: 10px; }
+  .fb:empty { display: none; }
+  .fb.bad { background: var(--bad-soft); color: var(--bad); }
+  .fb.good { background: var(--good-soft); color: var(--good); }
+  .fb .frac { font-size: .9em; }
+
+  /* ── Page 2: split & rearrange ───────────────────────── */
+  .eq.big { font-size: 2.8rem; padding: 8px 0 4px; }
+  .step { display: flex; flex-direction: column; gap: 12px; border-top: 2px solid var(--line); padding-top: 18px; }
+  .step .eq { font-size: 1.8rem; padding: 6px 0; }
+  .step .choice { font-size: 1.05rem; }
+  .w-c { color: var(--whole); font-weight: 700; }
+  .f-c { color: var(--zero); }
+
+  .tiles { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; font-size: 1.6rem; }
+  .tile, .slot {
+    min-width: 3.4em; min-height: 2.6em; border-radius: 12px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .tile {
+    font: inherit; font-weight: 700; cursor: pointer; padding: 6px 12px;
+    border: 2px solid currentColor; background: #fff;
+  }
+  .tile.w { color: var(--whole); background: var(--whole-soft); }
+  .tile.f { color: var(--zero); background: var(--zero-soft); }
+  .tile:disabled { cursor: default; }
+  .tile.used { visibility: hidden; }
+  .slot { border: 2px dashed #b9c1d6; }
+  .slot:has(.tile) { border: none; }
+  .tiles-label { text-align: center; font-size: .8rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+
+  /* ── Page 3: standard algorithm + area model ───────── */
+  .widget.wide { max-width: 1200px; }
+  .split3 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+  .half { border: 2px solid var(--line); border-radius: 14px; padding: 16px 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .half h2 { font-size: 1.15rem; color: var(--accent-dk); }
+  .half .sub { font-size: .9rem; color: var(--muted); line-height: 1.45; margin-top: -6px; }
+  .r0 { --rc: #0f8a8a; --rs: #e0f5f5; }
+  .r1 { --rc: #7a3fb8; --rs: #f1e8fb; }
+  .r2 { --rc: #2466d1; --rs: #e4eeff; }
+
+  .std {
+    display: grid; grid-template-columns: 34px repeat(6, 40px) 1fr;
+    align-items: center; justify-items: center; row-gap: 4px;
+    font-size: 1.5rem; font-variant-numeric: tabular-nums; margin: 0 auto;
+  }
+  .std .ctag { font-size: .62rem; font-weight: 700; color: var(--rc); justify-self: end; white-space: nowrap; }
+  .std .sign { color: var(--muted); }
+  .std .rule { grid-column: 1 / 8; justify-self: stretch; border-top: 3px solid var(--ink); }
+  .std .cap { justify-self: start; padding-left: 10px; font-size: .8rem; color: var(--rc); font-weight: 600; white-space: nowrap; }
+  .std .topdig { font-weight: 700; }
+  .std .botdig { font-weight: 700; color: var(--rc); }
+
+  .bx {
+    font: inherit; font-weight: 700; text-align: center; color: var(--ink);
+    width: 34px; height: 38px; border-radius: 7px; border: 2px solid #b9c1d6; background: #fff; padding: 0;
+  }
+  .bx.sd { border-color: var(--rc); }
+  .bx.cy { width: 24px; height: 24px; font-size: .8rem; border-radius: 5px; border-style: dashed; border-color: var(--rc, #9aa2b8); }
+  .bx.ph { color: #9aa2b8; }
+  .bx:focus { outline: none; box-shadow: 0 0 0 3px rgba(59,75,184,.3); }
+  .bx:disabled { background: #f1f3f8; border-style: dotted; cursor: not-allowed; }
+  .bx.ok { background: var(--good-soft); border-color: var(--good); border-style: solid; color: var(--good); }
+  .bx.auto { background: #fff7d6; border-color: #d4a514; border-style: solid; color: #8a6400; }
+  .bx.bad { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); animation: shake .3s; }
+  @keyframes shake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+
+  .area { display: flex; flex-direction: column; gap: 10px; }
+  .nts {
+    align-self: center; transform: rotate(-2deg);
+    border: 4px solid var(--bad); color: var(--bad); background: var(--bad-soft);
+    font-weight: 800; letter-spacing: .16em; font-size: 1.25rem; padding: 6px 18px; border-radius: 8px;
+  }
+  .agrid {
+    display: grid; grid-template-columns: 58px 3fr 2fr 1.35fr 92px;
+    grid-template-rows: 44px 124px 88px 66px auto; gap: 3px;
+  }
+  .atop, .aside { display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem; flex-direction: column; line-height: 1.1; }
+  .atop small, .aside small { font-size: .6rem; font-weight: 600; color: var(--muted); letter-spacing: .04em; }
+  .aside { color: var(--rc); }
+  .acell {
+    background: var(--rs); border: 2px solid var(--rc); border-radius: 6px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 4px; min-width: 0;
+  }
+  .acell .cap { font-size: .7rem; color: var(--rc); font-weight: 600; white-space: nowrap; }
+  .bx.ab { width: 100%; max-width: 96px; height: 34px; font-size: 1rem; }
+  .art { display: flex; align-items: center; justify-content: center; }
+  .ahead { font-size: .7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; display: flex; align-items: flex-end; justify-content: center; text-align: center; }
+  .atot { grid-column: 2 / 5; display: flex; align-items: center; justify-content: flex-end; padding-right: 10px; font-weight: 700; color: var(--muted); font-size: .9rem; }
+  .legend { font-size: .85rem; color: var(--muted); text-align: center; }
+  .legend .sw { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin: 0 4px 0 10px; border: 2px solid; }
+
+  .connect {
+    text-align: center; font-size: 1.05rem; color: var(--muted); line-height: 1.6;
+  }
+
+  /* ── Summary ─────────────────────────────────────────── */
+  .summary { text-align: center; display: flex; flex-direction: column; gap: 16px; align-items: center; padding: 20px 0; }
+  .summary .big { font-size: 3rem; font-weight: 700; color: var(--accent-dk); }
+  .recap { list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+  .recap li { display: flex; align-items: center; gap: .4em; justify-content: center; }
+  .recap .mark { width: 1.4em; font-weight: 700; }
+  .recap .mark.ok { color: var(--good); }
+  .recap .mark.miss { color: var(--zero); }
+
+  @media (max-width: 900px) { .split3 { grid-template-columns: 1fr; } }
+  @media (max-width: 600px) {
+    body { padding: 0; }
+    .widget { border-radius: 0; }
+    header { padding: 18px 16px 14px; }
+    main { padding: 20px 16px 28px; }
+    .eq { font-size: 1.6rem; }
+    .eq.big { font-size: 2.1rem; }
+    .step .eq, .tiles { font-size: 1.35rem; }
+    .tiles { gap: 5px; }
+    .tile, .slot { min-width: 2.4em; min-height: 2.4em; }
+    .tile { padding: 4px 7px; }
+    .split3 { grid-template-columns: 1fr; }
+    .half { padding: 14px 10px 16px; }
+    .std { grid-template-columns: 26px repeat(6, 34px) 1fr; font-size: 1.25rem; }
+    .bx { width: 30px; height: 34px; }
+    .std .cap { display: none; }
+    .agrid { grid-template-columns: 44px 3fr 2fr 1.35fr 74px; grid-template-rows: 40px 110px 80px 64px auto; }
+    .acell .cap { font-size: .6rem; }
+    header { padding-bottom: 0; }
+    .choices { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="widget">
+  <header>
+    <div class="eyebrow">Multiplying Decimals</div>
+    <h1 id="title"></h1>
+    <div class="progress" id="progress"></div>
+    <nav class="tabs" id="tabs"></nav>
+  </header>
+  <main id="main"></main>
+</div>
+
+<script>
+const N_CHOICE = 2;   // first problems are multiple choice
+const N_ZEROS  = 2;   // then "how many 0s?" problems
+const SUP = ['⁰','¹','²','³','⁴','⁵','⁶','⁷','⁸','⁹'];
+
+const main = document.getElementById('main');
+const progress = document.getElementById('progress');
+const N_SPLIT  = 1;   // problems per round on page 2
+const N_MULT   = 2;   // problems per round on page 3
+let page = 0, round, idx;
+
+// ── Number generation ─────────────────────────────────
+// A problem is a string of digits plus how many of them sit after the point.
+function randDigit(lo) { return lo + Math.floor(Math.random() * (10 - lo)); }
+
+function makeProblem() {
+  const len = 3 + Math.floor(Math.random() * 5);          // 3–7 digits
+  const places = 1 + Math.floor(Math.random() * (len - 1)); // at least 1 digit before the point
+  let d = String(randDigit(1));
+  for (let i = 1; i < len - 1; i++) d += randDigit(0);
+  d += randDigit(1);                                       // no trailing zero after the point
+  return { digits: d, places };
+}
+
+function makeRound() {
+  const seen = new Set(), probs = [];
+  while (probs.length < N_CHOICE + N_ZEROS) {
+    const p = makeProblem();
+    if (seen.has(p.digits + p.places)) continue;
+    seen.add(p.digits + p.places);
+    p.kind = probs.length < N_CHOICE ? 'choice' : 'zeros';
+    p.firstTry = true;
+    probs.push(p);
+  }
+  return probs;
+}
+
+// Page 2: put decimal points into a page-3 problem (two 3-digit numbers), one with
+// 1 decimal place and the other with 2, so the same whole numbers carry over.
+function makeSplit() {
+  const mult = makeMult(), pa = 1 + Math.floor(Math.random() * 2);
+  return { kind: 'split', firstTry: true, mult,
+           a: { digits: String(mult.a), places: pa }, b: { digits: String(mult.b), places: 3 - pa } };
+}
+function makeSplitRound() { return Array.from({ length: N_SPLIT }, makeSplit); }
+
+// digits shifted so `m` of them sit after the point, e.g. ("3214", 2) → "32.14"
+function shift(digits, m) {
+  if (m <= 0) return digits + '0'.repeat(-m);
+  const padded = digits.padStart(m + 1, '0');
+  return padded.slice(0, -m) + '.' + padded.slice(-m);
+}
+
+// ── HTML helpers ──────────────────────────────────────
+const decimalStr = p => shift(p.digits, p.places);
+// The decimal as separate digits with a gap after each; only the gap holding
+// the point has width. hopPoint() makes the point jump right, one digit at a time.
+const hopNum = p => {
+  const at = p.digits.length - p.places - 1;
+  return `<span class="hop">${[...p.digits].map((d, i) =>
+    `<span class="dig">${d}</span><span class="gap">${i === at ? '.' : ''}</span>`).join('')}</span>`;
+};
+const frac = (n, d) => `<span class="frac"><span class="fn">${n}</span><span class="fd">${d}</span></span>`;
+const zerosHTML = n => '<span class="z">0</span>'.repeat(n);
+// empty slot that gets one 0 per hop
+const zeroSlot = () => '<span class="zslot"></span>';
+const addZero = root => () =>
+  root.querySelector('.zslot').insertAdjacentHTML('beforeend', '<span class="z pop">0</span>');
+
+// Jump the point from its spot to after the last digit (dir = 1), or from the end
+// of a whole number `places` digits to the left (dir = -1), drawing a numbered
+// swoop under each digit it passes. Calls onHop() after each jump, onDone() at the end.
+function hopPoint(root, places, onHop, onDone, dir = 1) {
+  const box = root.querySelector('.hop');
+  const gaps = [...box.querySelectorAll('.gap')], digs = [...box.querySelectorAll('.dig')];
+  const start = dir > 0 ? gaps.length - places - 1 : gaps.length - 1;
+  const em = parseFloat(getComputedStyle(box).fontSize);
+  const ptW = gaps[start].getBoundingClientRect().width;
+  gaps.forEach(g => g.style.width = '0px');
+  gaps[start].style.width = ptW + 'px';
+  gaps[start].classList.add('ghost');            // faint mark where the point started
+
+  const pt = document.createElement('span');
+  pt.className = 'pt'; pt.textContent = '.'; pt.style.width = ptW + 'px';
+  box.appendChild(pt);
+  box.insertAdjacentHTML('beforeend', '<svg></svg>');
+  const svg = box.querySelector('svg');
+  const xOf = g => gaps[g].offsetLeft + gaps[g].getBoundingClientRect().width / 2;
+  const place = (x, lift) => {
+    pt.style.left = (x - ptW / 2) + 'px';
+    pt.style.transform = `translateY(${-lift}px)`;
+  };
+  place(xOf(start), 0);
+
+  let from = start, k = 0;
+  const DUR = 520;
+  function hop() {
+    const to = from + dir, t0 = performance.now();
+    function frame(now) {
+      const t = Math.min(1, (now - t0) / DUR);
+      gaps[to].style.width = ptW * t + 'px';
+      if (from !== start) gaps[from].style.width = ptW * (1 - t) + 'px';
+      place((1 - t) * xOf(from) + t * xOf(to), Math.sin(Math.PI * t) * .7 * em);
+      if (t < 1) return requestAnimationFrame(frame);
+      // swoop under the digit just jumped over
+      const d = digs[dir > 0 ? to : from], x1 = d.offsetLeft, x2 = x1 + d.offsetWidth;
+      const y = d.offsetTop + d.offsetHeight * .92, xm = (x1 + x2) / 2;
+      svg.insertAdjacentHTML('beforeend',
+        `<path d="M${x1} ${y} Q${xm} ${y + .6 * em} ${x2} ${y}"/>` +
+        `<text x="${xm}" y="${y + .78 * em}">${++k}</text>`);
+      onHop(k);
+      from = to;
+      if (k < places) setTimeout(hop, 160); else onDone();
+    }
+    requestAnimationFrame(frame);
+  }
+  setTimeout(hop, 300);
+}
+const power = n => `<span class="pow">10<sup>${n}</sup></span>`;
+const times = '<span class="op">×</span>';
+const equals = '<span class="op">=</span>';
+
+function renderProgress() {
+  progress.innerHTML = round.map((p, i) => {
+    let c = 'dot';
+    if (i === idx) c += ' cur';
+    else if (i < idx) c += p.firstTry ? ' ok' : ' miss';
+    return `<span class="${c}"></span>`;
+  }).join('');
+}
+
+// Feedback when the student picks 10^m instead of 10^places
+function wrongMsg(p, m) {
+  const got = shift(p.digits, m);
+  const dir = m < p.places
+    ? 'That’s too big — you need <b>more</b> zeros.'
+    : 'That’s too small — you need <b>fewer</b> zeros.';
+  return `${p.digits} ${times} ${frac(1, '1' + '0'.repeat(m))} = <b>${got}</b>, not ${decimalStr(p)}. ${dir}`;
+}
+
+// ── Screens ───────────────────────────────────────────
+const PAGES = [
+  { tab: '1 · Decimal → whole × 1/10ⁿ', title: 'Decimals as Whole Numbers × 1 / 10ⁿ',
+    make: makeRound, introAt: [0, N_CHOICE],
+    extra: () => Object.assign(makeProblem(), { kind: 'zeros', firstTry: true }),
+    recap: p => `${decimalStr(p)} ${equals} ${p.digits} ${times} ${frac(1, power(p.places))}` },
+  { tab: '2 · Split & rearrange', title: 'Split and Rearrange',
+    make: makeSplitRound, introAt: [0], extra: makeSplit,
+    recap: p => `${decimalStr(p.a)} ${times} ${decimalStr(p.b)} ${equals} ${grouped(p)}` },
+  { tab: '3 · Multiply 3-digit numbers', title: 'Review: Multiplying 3-Digit Numbers',
+    make: makeMultRound, introAt: [0], wide: true, extra: makeMult,
+    recap: p => `${p.a} ${times} ${p.b} ${equals} ${p.S}` },
+  { tab: '4 · Multiply the fractions', title: 'Multiply the Fractions',
+    make: () => [makeFinish()], introAt: [0], extra: () => makeFinish(),
+    recap: p => `${decimalStr(p.split.a)} ${times} ${decimalStr(p.split.b)} ${equals} ${finalAnswer(p.split)}` },
+];
+const SHOW = { choice: p => showChoice(p), zeros: p => showZeros(p), split: p => showSplit(p),
+               mult: p => showMult(p), finish: p => showFinish(p) };
+
+function renderTabs() {
+  document.getElementById('title').textContent = PAGES[page].title;
+  document.querySelector('.widget').classList.toggle('wide', !!PAGES[page].wide);
+  const tabs = document.getElementById('tabs');
+  tabs.innerHTML = PAGES.map((pg, i) =>
+    `<button class="tab${i === page ? ' on' : ''}" data-i="${i}">${pg.tab}</button>`).join('');
+  tabs.querySelectorAll('.tab').forEach(t => t.onclick = () => { page = +t.dataset.i; start(); });
+}
+
+function start() {
+  renderTabs();
+  round = PAGES[page].make();
+  round.base = round.length;     // problems past this are optional extra practice
+  idx = 0;
+  show();
+}
+
+function show() {
+  renderProgress();
+  if (idx >= round.length) return summary();
+  const p = round[idx];
+  SHOW[p.kind](p);
+}
+
+function header(p, intro) {
+  return `
+    ${PAGES[page].introAt.includes(idx) ? `<div class="intro">${intro}</div>` : ''}
+    <div class="counter">${idx < round.base ? `Problem ${idx + 1} of ${round.base}` : 'Extra practice'}</div>`;
+}
+
+function showChoice(p) {
+  const n = p.places;
+  // four consecutive powers of ten that include the right one
+  const lo = Math.max(1, n - Math.floor(Math.random() * 4));
+  const opts = [0, 1, 2, 3].map(k => lo + k);
+
+  main.innerHTML = `
+    ${header(p, 'Any decimal can be written as a <b>whole number</b> times <b>1 over a power of ten</b>. Pick the bottom number that makes the two sides equal.')}
+    <div class="prompt">What goes in the bottom of the fraction?</div>
+    <div class="eq">${decimalStr(p)} <span class="seg">${equals} ${p.digits} ${times} ${frac(1, '<span class="q">?</span>')}</span></div>
+    <div class="choices">${opts.map(m =>
+      `<button class="choice" data-m="${m}">${'1' + '0'.repeat(m)}</button>`).join('')}</div>
+    <div class="fb" id="fb"></div>
+    <div class="btn-row" id="next"></div>`;
+
+  const fb = document.getElementById('fb');
+  main.querySelectorAll('.choice').forEach(b => b.onclick = () => {
+    const m = +b.dataset.m;
+    if (m === n) {
+      b.classList.add('right');
+      main.querySelectorAll('.choice').forEach(x => x.disabled = true);
+      main.querySelector('.eq').innerHTML =
+        `${hopNum(p)} <span class="seg">${equals} ${p.digits} ${times} ${frac(1, '1' + zeroSlot())}</span>`;
+      fb.className = 'fb good';
+      fb.innerHTML = `Yes! ${p.digits} ${times} ${frac(1, '1' + '0'.repeat(n))} = ${decimalStr(p)}`;
+      hopPoint(main, n, addZero(main), nextButton);
+    } else {
+      p.firstTry = false;
+      b.classList.add('wrong');
+      b.disabled = true;
+      fb.className = 'fb bad';
+      fb.innerHTML = wrongMsg(p, m);
+    }
+  });
+}
+
+function showZeros(p) {
+  const n = p.places;
+  main.innerHTML = `
+    ${header(p, 'Now build the bottom number yourself. It starts with a <b>1</b> — you decide how many <b>0s</b> come after it.')}
+    <div class="eq" id="eq">${decimalStr(p)} ${equals} ${p.digits} ${times} ${frac(1, '1<span class="blank"></span>')}</div>
+    <div class="zero-row">
+      <label for="zin">How many 0s do you want to put after the 1?</label>
+      <input class="num-in" id="zin" type="number" min="0" max="9" inputmode="numeric">
+      <button class="btn" id="check">Check</button>
+    </div>
+    <div class="fb" id="fb"></div>
+    <div class="connect" id="connect"></div>
+    <div class="btn-row" id="next"></div>`;
+
+  const zin = document.getElementById('zin'), fb = document.getElementById('fb');
+  const check = document.getElementById('check');
+  zin.focus();
+
+  check.onclick = () => {
+    const m = parseInt(zin.value, 10);
+    if (isNaN(m) || m < 0 || m > 9) {
+      fb.className = 'fb bad';
+      fb.textContent = 'Type a number of zeros, like 2 or 4.';
+      return;
+    }
+    if (m === n) {
+      zin.disabled = check.disabled = true;
+      fb.className = 'fb good';
+      fb.textContent = `Yes — ${n} zero${n === 1 ? '' : 's'}!`;
+      document.getElementById('eq').innerHTML =
+        `<span class="seg">${hopNum(p)} ${equals} ${p.digits} ${times} ${frac(1, power(n))}</span>
+         <span class="seg">${equals} ${p.digits} ${times} ${frac(1, '1' + zeroSlot())}</span>`;
+      hopPoint(main, n, addZero(main), () => {
+        document.getElementById('connect').innerHTML =
+          `The point jumped <span class="z">${n}</span> place${n === 1 ? '' : 's'} to make ${p.digits}. ` +
+          `${power(n)} is a <b>1</b> followed by <span class="z">${n}</span> zero${n === 1 ? '' : 's'}: ` +
+          `${power(n)} = 1${zerosHTML(n)}`;
+        nextButton();
+      });
+    } else {
+      p.firstTry = false;
+      fb.className = 'fb bad';
+      fb.innerHTML = wrongMsg(p, m);
+      zin.select();
+    }
+  };
+  zin.onkeydown = e => { if (e.key === 'Enter') check.click(); };
+}
+
+// ── Page 2: split each decimal, then rearrange ────────
+const fracOf = f => frac(1, '1' + '0'.repeat(f.places));
+const grouped = p =>
+  `<span class="seg">(<span class="w-c">${p.a.digits}</span> ${times} <span class="w-c">${p.b.digits}</span>)
+   ${times} <span class="f-c">(${fracOf(p.a)} ${times} ${fracOf(p.b)})</span></span>`;
+
+// One "how many 0s?" row for a single decimal, rendered into `el`.
+function zeroStep(el, f, onMiss, onDone) {
+  el.innerHTML = `
+    <div class="eq">${decimalStr(f)} <span class="seg">${equals} ${f.digits} ${times} ${frac(1, '1<span class="blank"></span>')}</span></div>
+    <div class="zero-row">
+      <label>How many 0s after the 1?</label>
+      <input class="num-in" type="number" min="0" max="9" inputmode="numeric">
+      <button class="btn">Check</button>
+    </div>
+    <div class="fb"></div>`;
+  const zin = el.querySelector('input'), check = el.querySelector('.btn'), fb = el.querySelector('.fb');
+  zin.focus();
+  check.onclick = () => {
+    const m = parseInt(zin.value, 10);
+    if (isNaN(m) || m < 0 || m > 9) {
+      fb.className = 'fb bad';
+      fb.textContent = 'Type a number of zeros, like 2 or 4.';
+      return;
+    }
+    if (m !== f.places) {
+      onMiss();
+      fb.className = 'fb bad';
+      fb.innerHTML = wrongMsg(f, m);
+      zin.select();
+      return;
+    }
+    el.querySelector('.zero-row').remove();
+    fb.className = 'fb'; fb.textContent = '';
+    el.querySelector('.eq').innerHTML =
+      `${hopNum(f)} <span class="seg">${equals} ${f.digits} ${times} ${frac(1, '1' + zeroSlot())}</span>`;
+    hopPoint(el, f.places, addZero(el), onDone);
+  };
+  zin.onkeydown = e => { if (e.key === 'Enter') check.click(); };
+}
+
+function addStep(html) {
+  main.querySelector('#next').insertAdjacentHTML('beforebegin', `<div class="step">${html}</div>`);
+  const steps = main.querySelectorAll('.step'), el = steps[steps.length - 1];
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  return el;
+}
+
+function showSplit(p) {
+  const { a, b } = p, miss = () => { p.firstTry = false; };
+  main.innerHTML = `
+    ${header(p, 'To multiply decimals, first turn each one into a <b>whole number</b> times <b>1 over a power of ten</b>. Then move the pieces around so the whole numbers are together and the fractions are together.')}
+    <div class="eq big">${decimalStr(a)} ${times} ${decimalStr(b)}</div>
+    <div class="btn-row" id="next"></div>`;
+
+  const s1 = addStep(`<div class="prompt"><b>Step 1.</b> Split each decimal into a whole number × 1 over a power of ten.</div>
+    <div id="fa"></div><div id="fbx"></div>`);
+  zeroStep(s1.querySelector('#fa'), a, miss, () =>
+    zeroStep(s1.querySelector('#fbx'), b, miss, rearrange));
+
+  function rearrange() {
+    const pieces = [
+      { kind: 'w', html: a.digits }, { kind: 'f', html: fracOf(a) },
+      { kind: 'w', html: b.digits }, { kind: 'f', html: fracOf(b) },
+    ];
+    const s2 = addStep(`<div class="prompt"><b>Step 2.</b> Put the pieces together:</div>
+      <div class="eq">${decimalStr(a)} ${times} ${decimalStr(b)} <span class="seg">${equals}
+        ${pieces.map(x => `<span class="${x.kind}-c">${x.html}</span>`).join(` ${times} `)}</span></div>
+      <div class="prompt">Rearrange so the two <span class="w-c">whole numbers</span> come first, then the two <span class="f-c"><b>fractions</b></span>. Tap the pieces in the new order.</div>
+      <div class="tiles-label">Pieces</div>
+      <div class="tiles" id="src">${pieces.map((x, i) =>
+        `<button class="tile ${x.kind}" data-i="${i}">${x.html}</button>`).join('')}</div>
+      <div class="tiles-label">New order</div>
+      <div class="tiles" id="dst">${pieces.map((_, i) =>
+        `<span class="slot" data-s="${i}"></span>`).join(` ${times} `)}</div>
+      <div class="fb"></div>`);
+    const fb = s2.querySelector('.fb');
+    const slots = [...s2.querySelectorAll('.slot')];
+    const order = [null, null, null, null];
+
+    s2.querySelectorAll('#src .tile').forEach(t => t.onclick = () => {
+      const s = order.indexOf(null);
+      if (s < 0) return;
+      order[s] = +t.dataset.i;
+      const placed = t.cloneNode(true);
+      t.classList.add('used');
+      placed.onclick = () => {                     // tap a placed piece to send it back
+        order[s] = null; placed.remove(); t.classList.remove('used');
+        fb.className = 'fb'; fb.textContent = '';
+      };
+      slots[s].appendChild(placed);
+      if (!order.includes(null)) checkOrder();
+    });
+
+    function checkOrder() {
+      const ok = order.slice(0, 2).every(i => pieces[i].kind === 'w');
+      if (!ok) {
+        miss();
+        fb.className = 'fb bad';
+        fb.textContent = 'Not yet — both whole numbers go first, then both fractions. Tap a piece to send it back.';
+        return;
+      }
+      s2.querySelectorAll('.tile').forEach(t => t.disabled = true);
+      fb.className = 'fb good';
+      fb.textContent = 'Nice — same four pieces, new order.';
+      property();
+    }
+  }
+
+  function property() {
+    const opts = [
+      ['Commutative', null],
+      ['Associative', 'Associative is about <b>grouping</b> — which pair you multiply first. Here we changed the <b>order</b>.'],
+      ['Distributive', 'Distributive is for multiplying across a + or −, like 3 × (4 + 5).'],
+      ['Identity', 'Identity is multiplying by 1 and getting the same number back.'],
+    ];
+    const s3 = addStep(`<div class="prompt"><b>Step 3.</b> Which property says you can multiply in any order and get the same answer?</div>
+      <div class="choices">${opts.map(([name], i) => `<button class="choice" data-i="${i}">${name}</button>`).join('')}</div>
+      <div class="fb"></div>`);
+    const fb = s3.querySelector('.fb');
+    s3.querySelectorAll('.choice').forEach(btn => btn.onclick = () => {
+      const why = opts[+btn.dataset.i][1];
+      if (why) {
+        miss();
+        btn.classList.add('wrong'); btn.disabled = true;
+        fb.className = 'fb bad'; fb.innerHTML = why;
+        return;
+      }
+      btn.classList.add('right');
+      s3.querySelectorAll('.choice').forEach(x => x.disabled = true);
+      fb.className = 'fb good';
+      fb.innerHTML = 'Yes — the <b>commutative property</b>: a × b = b × a.';
+      addStep(`<div class="prompt">Now you have <span class="w-c">two whole numbers</span> times <span class="f-c"><b>two fractions</b></span>:</div>
+        <div class="eq">${decimalStr(a)} ${times} ${decimalStr(b)} <span class="seg">${equals} ${grouped(p)}</span></div>`);
+      linkButton(`Now multiply ${a.digits} × ${b.digits} →`,
+        () => goTo(2, Object.assign(p.mult, { from: p })));
+    });
+  }
+}
+
+// ── Page 3: standard algorithm ⇄ area model ──────────
+// Digits are stored ones-first: A[0] is the ones digit of the top number.
+function makeMult() {
+  for (;;) {
+    const A = [randDigit(1), randDigit(1), randDigit(1)], B = [randDigit(1), randDigit(1), randDigit(1)];
+    const a = A[0] + 10 * A[1] + 100 * A[2], b = B[0] + 10 * B[1] + 100 * B[2];
+    // one partial-product row per bottom digit; carry[s] is written above top digit s
+    const rows = B.map(bd => {
+      const carry = [0];
+      for (let j = 0; j < 2; j++) carry[j + 1] = Math.floor((A[j] * bd + carry[j]) / 10);
+      return { bd, P: a * bd, digits: [...String(a * bd)].reverse().map(Number), carry };
+    });
+    if (!rows.every(r => r.carry[1] || r.carry[2])) continue;   // every row must carry
+    const S = a * b, sumDigits = [...String(S)].reverse().map(Number);
+    const at = (i, place) => place < i ? 0 : (rows[i].digits[place - i] || 0);
+    const addCarry = [0];
+    for (let c = 0; c < sumDigits.length; c++)
+      addCarry[c + 1] = Math.floor((at(0, c) + at(1, c) + at(2, c) + addCarry[c]) / 10);
+    if (!addCarry.some(x => x)) continue;                        // the addition must carry too
+    return { kind: 'mult', A, B, a, b, rows, S, sumDigits, addCarry, firstTry: true };
+  }
+}
+function makeMultRound() { return Array.from({ length: N_MULT }, makeMult); }
+
+const PLACE = ['ones', 'tens', 'hundreds'];
+
+function showMult(p) {
+  const { A, B, rows, sumDigits, addCarry } = p;
+  const box = {};               // id → { el, expect, optional, filled }
+  const miss = () => { p.firstTry = false; };
+
+  // ── standard algorithm grid ──
+  // grid column for a place value (place 0 = ones, far right)
+  const col = place => 2 + 5 - place;
+  const at = (r, place, html) => `<div style="grid-row:${r};grid-column:${col(place)}">${html}</div>`;
+  const inp = (id, cls, expect, optional) => {
+    box[id] = { expect: String(expect), optional };
+    return `<input class="bx ${cls}" id="${id}" maxlength="1" inputmode="numeric" autocomplete="off">`;
+  };
+  let std = '';
+  // carry rows: the ones-digit row sits closest to the top number
+  [2, 1, 0].forEach((i, n) => {
+    std += `<div class="ctag r${i}" style="grid-row:${n + 1};grid-column:1">carry ×${B[i]}</div>`;
+    for (const s of [1, 2]) std += at(n + 1, s,
+      `<span class="r${i}">${inp(`c-${i}-${s}`, 'cy', rows[i].carry[s] || '', !rows[i].carry[s])}</span>`);
+  });
+  A.forEach((d, j) => std += at(4, j, `<span class="topdig">${d}</span>`));
+  std += `<div class="sign" style="grid-row:5;grid-column:${col(3)}">×</div>`;
+  B.forEach((d, i) => std += at(5, i, `<span class="botdig r${i}">${d}</span>`));
+  std += `<div class="rule" style="grid-row:6"></div>`;
+  for (let c = 1; c < sumDigits.length; c++)
+    std += at(7, c, inp(`ac-${c}`, 'cy', addCarry[c] || '', !addCarry[c]));
+  std += `<div class="ctag" style="grid-row:7;grid-column:1;--rc:var(--muted)">carry +</div>`;
+  rows.forEach((r, i) => {
+    const gr = 8 + i;
+    for (let z = 0; z < i; z++) std += at(gr, z, `<span class="r${i}">${inp(`z-${i}-${z}`, 'sd ph', 0)}</span>`);
+    r.digits.forEach((d, k) => std += at(gr, i + k, `<span class="r${i}">${inp(`d-${i}-${k}`, 'sd', d)}</span>`));
+    std += `<div class="cap r${i}" style="grid-row:${gr};grid-column:8">${p.a} × ${B[i] * 10 ** i}</div>`;
+  });
+  std += `<div class="sign" style="grid-row:10;grid-column:1">+</div>`;
+  std += `<div class="rule" style="grid-row:11"></div>`;
+  sumDigits.forEach((d, c) => std += at(12, c, inp(`s-${c}`, '', d)));
+
+  // ── area model grid ── (hundreds on the top/left, biggest box)
+  const ain = (id, expect) => {
+    box[id] = { expect: String(expect), multi: true };
+    return `<input class="bx ab" id="${id}" inputmode="numeric" autocomplete="off">`;
+  };
+  let area = `<div></div>`;
+  for (const j of [2, 1, 0]) area += `<div class="atop">${A[j] * 10 ** j}<small>${PLACE[j]}</small></div>`;
+  area += `<div class="ahead">Row total</div>`;
+  for (const i of [2, 1, 0]) {
+    const bv = B[i] * 10 ** i;
+    area += `<div class="aside r${i}">${bv}<small>${PLACE[i]}</small></div>`;
+    for (const j of [2, 1, 0]) {
+      const av = A[j] * 10 ** j;
+      area += `<div class="acell r${i}"><span class="cap">${av} × ${bv}</span>${ain(`cell-${i}-${j}`, av * bv)}</div>`;
+    }
+    area += `<div class="art r${i}">${ain(`rt-${i}`, rows[i].P * 10 ** i)}</div>`;
+  }
+  area += `<div></div><div class="atot">Total =</div><div class="art">${ain('tot', p.S)}</div>`;
+
+  main.innerHTML = `
+    ${header(p, 'Two ways to solve the same problem. Work in <b>either</b> model — every piece you get right also shows up in the other one (in <span style="background:#fff7d6;color:#8a6400;padding:0 4px;border-radius:4px">yellow</span>). In the standard algorithm, write each <b>carry</b> in its dashed box before the digit it goes into.')}
+    ${p.from ? `<div class="connect">From Split &amp; Rearrange: ${decimalStr(p.from.a)} ${times} ${decimalStr(p.from.b)} ${equals} ${grouped(p.from)}<br>Now multiply the two whole numbers.</div>` : ''}
+    <div class="eq big">${p.a} ${times} ${p.b}</div>
+    <div class="split3">
+      <section class="half">
+        <h2>Standard Algorithm</h2>
+        <div class="sub">One digit at a time, right to left. Dashed boxes are for carries.</div>
+        <div class="std">${std}</div>
+      </section>
+      <section class="half">
+        <h2>Area Model</h2>
+        <div class="sub">Multiply the two numbers on the edges of each box. Then add across each row, and add the rows.</div>
+        <div class="area"><div class="nts">NOT TO SCALE</div><div class="agrid">${area}</div></div>
+      </section>
+    </div>
+    <div class="legend">Rows: <span class="sw r0" style="background:var(--rs);border-color:var(--rc)"></span>× ${B[0]}
+      <span class="sw r1" style="background:var(--rs);border-color:var(--rc)"></span>× ${B[1] * 10}
+      <span class="sw r2" style="background:var(--rs);border-color:var(--rc)"></span>× ${B[2] * 100}</div>
+    <div class="fb" id="fb"></div>
+    <div class="btn-row" id="next"></div>`;
+
+  for (const id in box) box[id].el = document.getElementById(id);
+  const filled = id => box[id] && box[id].filled;
+
+  function fill(id, how) {
+    const b = box[id];
+    if (!b || b.filled) return;
+    b.filled = true;
+    b.el.value = b.expect;
+    b.el.readOnly = true;
+    b.el.disabled = false;
+    b.el.classList.remove('bad');
+    b.el.classList.add(how);
+  }
+
+  // A digit can't go in until the carry it needs is written.
+  function gates() {
+    rows.forEach((r, i) => r.digits.forEach((_, k) => {
+      const s = Math.min(k, 2), b = box[`d-${i}-${k}`];
+      if (!b.filled) b.el.disabled = k > 0 && r.carry[s] > 0 && !filled(`c-${i}-${s}`);
+    }));
+    sumDigits.forEach((_, c) => {
+      const b = box[`s-${c}`];
+      if (!b.filled) b.el.disabled = c > 0 && addCarry[c] > 0 && !filled(`ac-${c}`);
+    });
+    [0, 1, 2].forEach(i => {
+      const b = box[`rt-${i}`];
+      if (!b.filled) b.el.disabled = ![0, 1, 2].every(j => filled(`cell-${i}-${j}`));
+    });
+    if (!box.tot.filled) box.tot.el.disabled = ![0, 1, 2].every(i => filled(`rt-${i}`));
+  }
+
+  // standard row i, digits 0..k (plus its placeholder zeros and the carries they use)
+  function fillStdRow(i, k) {
+    for (let z = 0; z < i; z++) fill(`z-${i}-${z}`, 'auto');
+    for (let q = 0; q <= k; q++) fill(`d-${i}-${q}`, 'auto');
+    for (let s = 1; s <= Math.min(k + 1, 2); s++) if (rows[i].carry[s]) fill(`c-${i}-${s}`, 'auto');
+  }
+  const lastDigit = i => rows[i].digits.length - 1;
+  // the area cell for top digit j is "done" in the standard algorithm once digit j
+  // (or, for the hundreds digit, the whole row) is written
+  const digitsFor = (i, j) => j < 2 ? j : lastDigit(i);
+
+  function fromStd(i) {
+    let m = -1;
+    while (m < lastDigit(i) && filled(`d-${i}-${m + 1}`)) m++;
+    for (const j of [0, 1, 2]) if (m >= digitsFor(i, j)) fill(`cell-${i}-${j}`, 'auto');
+    if (m === lastDigit(i)) fill(`rt-${i}`, 'auto');
+  }
+  function fromArea(i) {
+    let J = -1;
+    while (J < 2 && filled(`cell-${i}-${J + 1}`)) J++;
+    if (J >= 0) fillStdRow(i, digitsFor(i, J));
+  }
+  function fillSum() {
+    sumDigits.forEach((_, c) => fill(`s-${c}`, 'auto'));
+    addCarry.forEach((v, c) => { if (v && box[`ac-${c}`]) fill(`ac-${c}`, 'auto'); });
+  }
+
+  function studentGot(id) {
+    const [kind, i] = id.split('-');
+    if (kind === 'd') fromStd(+i);
+    else if (kind === 'cell') fromArea(+i);
+    else if (kind === 'rt') { fillStdRow(+i, lastDigit(+i)); fromStd(+i); }
+    else if (kind === 's' && sumDigits.every((_, c) => filled(`s-${c}`))) fill('tot', 'auto');
+    else if (kind === 'tot') fillSum();
+    gates();
+    if (filled('tot') && sumDigits.every((_, c) => filled(`s-${c}`))) finish();
+  }
+
+  function finish() {
+    for (const id in box) if (!box[id].optional) fill(id, 'auto');
+    for (const id in box) if (!box[id].filled) { box[id].el.disabled = true; }
+    const fb = document.getElementById('fb');
+    fb.className = 'fb good';
+    fb.innerHTML = `Both models agree: <b>${p.a} × ${p.b} = ${p.S.toLocaleString()}</b>. ` +
+      `Each colored row of boxes adds up to one line of the standard algorithm.`;
+    if (p.from) linkButton('Now multiply the fractions →', () => goTo(3, makeFinish(p.from)));
+    else nextButton();
+  }
+
+  for (const id in box) {
+    const b = box[id], el = b.el;
+    const check = () => {
+      if (b.filled) return;
+      const v = el.value.replace(/[,\s]/g, '');
+      if (v === '') { el.classList.remove('bad'); return; }
+      if (v === b.expect || (b.optional && v === '0')) {
+        if (b.optional) { b.expect = v; }
+        fill(id, 'ok');
+        studentGot(id);
+      } else {
+        miss();
+        el.classList.remove('bad'); void el.offsetWidth; el.classList.add('bad');
+      }
+    };
+    if (b.multi) {
+      el.addEventListener('change', check);
+      el.addEventListener('keydown', e => { if (e.key === 'Enter') check(); });
+    } else {
+      el.addEventListener('input', check);
+    }
+  }
+  gates();
+}
+
+// Jump to page 3 starting with the whole numbers from a finished page-2 problem.
+// ── Page 4: multiply the fractions, hop the point back ─
+function makeFinish(split = makeSplit()) { return { kind: 'finish', split, firstTry: true }; }
+const finalAnswer = split => shift(String(split.mult.S), split.a.places + split.b.places).replace(/\.?0+$/, '');
+
+function showFinish(p) {
+  const { a, b, mult } = p.split, n = a.places + b.places, S = String(mult.S);
+  const raw = shift(S, n), answer = finalAnswer(p.split);
+  const zs = k => `${k} zero${k === 1 ? '' : 's'}`;
+  main.innerHTML = `
+    ${header(p, 'Last step: multiply the two fractions, then put the whole number answer back together with it.')}
+    <div class="connect">${decimalStr(a)} ${times} ${decimalStr(b)} ${equals} ${grouped(p.split)}<br>
+      and you found <b>${a.digits} × ${b.digits} = ${S}</b></div>
+    <div class="btn-row" id="next"></div>`;
+
+  const s1 = addStep(`<div class="prompt"><b>Step 1.</b> Multiply the fractions. Count the 0s!</div>
+    <div class="eq">${frac(1, '1' + zerosHTML(a.places))} ${times} ${frac(1, '1' + zerosHTML(b.places))}
+      <span class="seg">${equals} ${frac(1, '1<span class="blank"></span>')}</span></div>
+    <div class="zero-row">
+      <label>How many 0s after the 1?</label>
+      <input class="num-in" type="number" min="0" max="9" inputmode="numeric">
+      <button class="btn">Check</button>
+    </div>
+    <div class="fb"></div>`);
+  const zin = s1.querySelector('input'), check = s1.querySelector('.zero-row .btn'), fb = s1.querySelector('.fb');
+  zin.focus();
+  check.onclick = () => {
+    const m = parseInt(zin.value, 10);
+    if (isNaN(m)) return;
+    if (m !== n) {
+      p.firstTry = false;
+      fb.className = 'fb bad';
+      fb.innerHTML = 'Count every orange <b>0</b> in both bottoms.';
+      zin.select();
+      return;
+    }
+    s1.querySelector('.zero-row').remove();
+    fb.className = 'fb good';
+    fb.innerHTML = `${zs(a.places)} + ${zs(b.places)} = ${zs(n)}, so ` +
+      `${frac(1, '1' + '0'.repeat(a.places))} ${times} ${frac(1, '1' + '0'.repeat(b.places))} = ${frac(1, '1' + '0'.repeat(n))}`;
+    s1.querySelector('.blank').outerHTML = zeroSlot();
+    for (let i = 0; i < n; i++) setTimeout(addZero(s1), i * 220);
+    setTimeout(step2, n * 220 + 300);
+  };
+  zin.onkeydown = e => { if (e.key === 'Enter') check.click(); };
+
+  function step2() {
+    const s2 = addStep(`<div class="prompt"><b>Step 2.</b> Put it back together:</div>
+      <div class="eq">${decimalStr(a)} ${times} ${decimalStr(b)} <span class="seg">${equals} ${S} ${times} ${frac(1, '1' + zerosHTML(n))}</span></div>
+      <div class="prompt">Every whole number has a decimal point hiding at its end. Multiplying by ${frac(1, '1' + '0'.repeat(n))}
+        moves it <b>${n} places to the left</b> — one hop for each 0.</div>
+      <div class="eq">${hopNum({ digits: S, places: 0 })}</div>
+      <div class="btn-row"><button class="btn" id="hopgo">← Hop the point ${n} places</button></div>`);
+    const hopgo = s2.querySelector('#hopgo');
+    hopgo.focus();
+    hopgo.onclick = () => {
+      hopgo.parentElement.remove();
+      hopPoint(s2, n, () => {}, done, -1);
+    };
+  }
+
+  function done() {
+    addStep(`<div class="eq big">${decimalStr(a)} ${times} ${decimalStr(b)} ${equals} <b>${answer}</b></div>
+      ${raw !== answer ? `<div class="connect">The 0 at the end doesn’t change the value: ${raw} = ${answer}</div>` : ''}
+      <div class="connect">Check: ${decimalStr(a)} has <span class="z">${a.places}</span> decimal place${a.places === 1 ? '' : 's'}
+        and ${decimalStr(b)} has <span class="z">${b.places}</span>, so the answer has
+        <span class="z">${a.places} + ${b.places} = ${n}</span> decimal places.</div>`);
+    linkButton('Start a new problem →', () => { page = 1; start(); window.scrollTo(0, 0); });
+  }
+}
+
+// Carry a finished problem on to another page as that page's only problem.
+function goTo(pageIndex, problem) {
+  page = pageIndex;
+  renderTabs();
+  round = [problem];
+  round.base = 1;
+  idx = 0;
+  show();
+  window.scrollTo(0, 0);
+}
+
+function linkButton(label, onClick) {
+  const row = document.getElementById('next');
+  row.innerHTML = `<button class="btn" id="go">${label}</button>`;
+  const go = document.getElementById('go');
+  go.onclick = onClick;
+  go.focus();
+}
+
+// Add one more problem of this page's type and go to it.
+function tryNew() {
+  round.push(PAGES[page].extra());
+  idx = round.length - 1;
+  show();
+}
+
+function nextButton() {
+  const row = document.getElementById('next');
+  if (idx + 1 < round.length) {
+    row.innerHTML = `<button class="btn" id="go">Next problem →</button>`;
+  } else {
+    row.innerHTML = `<button class="btn" id="go">See results</button>
+      <button class="btn ghost" id="more">Try a new problem</button>`;
+    document.getElementById('more').onclick = tryNew;
+  }
+  const go = document.getElementById('go');
+  go.onclick = () => { idx++; show(); };
+  go.focus();
+}
+
+function summary() {
+  const score = round.filter(p => p.firstTry).length;
+  main.innerHTML = `
+    <div class="summary">
+      <div class="counter">Round complete</div>
+      <div class="big">${score} / ${round.length}</div>
+      <div class="prompt">right on the first try</div>
+      <ul class="recap">${round.map(p => `
+        <li><span class="mark ${p.firstTry ? 'ok' : 'miss'}">${p.firstTry ? '✓' : '↻'}</span>
+          ${PAGES[page].recap(p)}</li>`).join('')}
+      </ul>
+      <div class="btn-row">
+        <button class="btn" id="more">Try a new problem</button>
+        <button class="btn ghost" id="again">Start over with new numbers</button>
+      </div>
+    </div>`;
+  document.getElementById('more').onclick = tryNew;
+  document.getElementById('again').onclick = start;
+}
+
+start();
+</script>
+</body>
+</html>
